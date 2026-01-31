@@ -1,0 +1,227 @@
+// Prisma Schema for PolyMind
+// 数据库: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// 用户表
+// ============================================
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String
+  avatarUrl     String?
+  status        UserStatus @default(active)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联关系
+  ownedRooms    ChatRoom[]        @relation("RoomOwner")
+  memberships   RoomMember[]      @relation("UserMembership")
+  sentMessages  Message[]         @relation("UserMessage")
+  readRecords   MessageRead[]
+  reactions     MessageReaction[]
+  aiModels      AIModel[]         @relation("AIModelCreator")
+
+  @@map("users")
+}
+
+// 用户状态枚举
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+// ============================================
+// AI模型配置表
+// ============================================
+model AIModel {
+  id              String    @id @default(uuid())
+  provider        String    // 'openai', 'claude', 'gemini', etc.
+  modelName       String    // 'gpt-4', 'claude-3-opus', etc.
+  displayName     String
+  apiEndpoint     String?
+  apiKeyEncrypted String?   // 加密存储
+  systemPrompt    String?
+  temperature     Float     @default(0.7)
+  maxTokens       Int       @default(2048)
+  isActive        Boolean   @default(true)
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // 关联关系
+  createdBy       User?             @relation("AIModelCreator", fields: [createdById], references: [id])
+  memberships     RoomMember[]      @relation("AIMembership")
+  messages        Message[]         @relation("AIMessage")
+  conversationContexts AiConversationContext[]
+
+  @@map("ai_models")
+}
+
+// ============================================
+// 群聊房间表
+// ============================================
+model ChatRoom {
+  id          String      @id @default(uuid())
+  name        String
+  description String?
+  createdById String
+  maxMembers  Int         @default(50)
+  isPrivate   Boolean     @default(false)
+  status      RoomStatus  @default(active)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // 关联关系
+  createdBy   User        @relation("RoomOwner", fields: [createdById], references: [id])
+  members     RoomMember[]
+  messages    Message[]
+  contexts    AiConversationContext[]
+
+  @@map("chat_rooms")
+}
+
+// 房间状态枚举
+enum RoomStatus {
+  active
+  archived
+  deleted
+}
+
+// ============================================
+// 房间成员表
+// ============================================
+model RoomMember {
+  id          String      @id @default(uuid())
+  roomId      String
+  userId      String?
+  aiModelId   String?
+  memberType  MemberType
+  role        MemberRole  @default(member)
+  joinedAt    DateTime    @default(now())
+
+  // 关联关系
+  room        ChatRoom    @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user        User?       @relation("UserMembership", fields: [userId], references: [id], onDelete: Cascade)
+  aiModel     AIModel?    @relation("AIMembership", fields: [aiModelId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+  @@unique([roomId, aiModelId])
+  @@map("room_members")
+}
+
+// 成员类型枚举
+enum MemberType {
+  human
+  ai
+}
+
+// 成员角色枚举
+enum MemberRole {
+  owner
+  admin
+  member
+}
+
+// ============================================
+// 消息表
+// ============================================
+model Message {
+  id              String        @id @default(uuid())
+  roomId          String
+  senderType      MemberType
+  senderUserId    String?
+  senderAiModelId String?
+  content         String
+  contentType     MessageContentType @default(text)
+  replyToId       String?
+  mentions        String[]      // 被提及的用户/AI ID数组
+  metadata        Json?         // 额外信息（如AI的token使用量）
+  isDeleted       Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  // 关联关系
+  room            ChatRoom      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  senderUser      User?         @relation("UserMessage", fields: [senderUserId], references: [id], onDelete: Cascade)
+  senderAiModel   AIModel?      @relation("AIMessage", fields: [senderAiModelId], references: [id], onDelete: Cascade)
+  replyTo         Message?      @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies         Message[]     @relation("MessageReply")
+  readRecords     MessageRead[]
+  reactions       MessageReaction[]
+
+  @@index([roomId, createdAt])
+  @@map("messages")
+}
+
+// 消息内容类型枚举
+enum MessageContentType {
+  text
+  image
+  file
+}
+
+// ============================================
+// 消息已读状态表
+// ============================================
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  // 关联关系
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@map("message_reads")
+}
+
+// ============================================
+// 消息反应表
+// ============================================
+model MessageReaction {
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId, emoji])
+  @@map("message_reactions")
+}
+
+// ============================================
+// AI对话上下文表
+// ============================================
+model AiConversationContext {
+  id              String    @id @default(uuid())
+  roomId          String
+  aiModelId       String
+  contextMessages Json      // 存储最近的对话历史
+  summary         String?   // 对话摘要
+  tokenCount      Int       @default(0)
+  updatedAt       DateTime  @updatedAt
+
+  // 关联关系
+  room            ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  aiModel         AIModel   @relation(fields: [aiModelId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, aiModelId])
+  @@map("ai_conversation_contexts")
+}

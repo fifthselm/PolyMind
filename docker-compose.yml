@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: polymind-postgres
+    environment:
+      POSTGRES_USER: polymind
+      POSTGRES_PASSWORD: polymind_password
+      POSTGRES_DB: polymind
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - polymind-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U polymind -d polymind"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: polymind-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - polymind-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 后端服务
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: polymind-backend
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://polymind:polymind_password@postgres:5432/polymind
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: your-super-secret-jwt-key-change-in-production
+      JWT_EXPIRES_IN: 7d
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - polymind-network
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+
+  # 前端开发服务器
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: polymind-frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - backend
+    networks:
+      - polymind-network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+
+  # pgAdmin (可选 - 数据库管理)
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: polymind-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@polymind.local
+      PGADMIN_DEFAULT_PASSWORD: admin_password
+    depends_on:
+      - postgres
+    networks:
+      - polymind-network
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+networks:
+  polymind-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: polymind-config
+  labels:
+    app: polymind
+data:
+  NODE_ENV: production
+  POSTGRES_DB: polymind
+  JWT_EXPIRES_IN: 7d
+  CORS_ORIGIN: https://polymind.example.com
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: polymind-secrets
+type: Opaque
+stringData:
+  DATABASE_URL: postgresql://user:password@postgres-service:5432/polymind
+  REDIS_URL: redis://redis-service:6379
+  JWT_SECRET: your-super-secret-jwt-key-change-in-production
+  POSTGRES_PASSWORD: your-secure-postgres-password
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  labels:
+    app: postgres
+data:
+  POSTGRES_USER: polymind
+  POSTGRES_DB: polymind
