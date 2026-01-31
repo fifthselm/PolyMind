@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MessagesService } from './messages.service';
 import { PrismaService } from '../../providers/prisma.service';
 import { GatewayGateway } from '../websocket/gateway.gateway';
+import { AIChatService } from '../ai-chat/ai-chat.service';
 
 describe('MessagesService', () => {
   let service: MessagesService;
@@ -28,6 +29,10 @@ describe('MessagesService', () => {
     },
   };
 
+  const mockAIChatService = {
+    processAIChat: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -39,6 +44,10 @@ describe('MessagesService', () => {
         {
           provide: GatewayGateway,
           useValue: mockGateway,
+        },
+        {
+          provide: AIChatService,
+          useValue: mockAIChatService,
         },
       ],
     }).compile();

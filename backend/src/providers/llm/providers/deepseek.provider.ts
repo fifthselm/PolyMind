@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import axios from 'axios';
-import type { AxiosInstance, AxiosError } from 'axios';
 import { BaseLLMProvider } from '../base/base.provider';
 import {
   LLMMessage,
@@ -20,7 +19,7 @@ export class DeepSeekProvider extends BaseLLMProvider {
     'deepseek-reasoner',
   ];
 
-  private client: AxiosInstance;
+  private client: any;
   private apiKey: string;
 
   constructor(config: ProviderConfig) {

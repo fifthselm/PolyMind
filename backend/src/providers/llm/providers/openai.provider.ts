@@ -25,7 +25,7 @@ export class OpenAIProvider extends BaseLLMProvider {
     'gpt-3.5-turbo-0125',
   ];
 
-  private client: AxiosInstance;
+  private client: any;
   private apiKey: string;
 
   constructor(config: ProviderConfig) {

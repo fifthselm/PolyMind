@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 import { BaseLLMProvider } from '../base/base.provider';
 import { 
   LLMMessage, 
@@ -19,7 +19,7 @@ export class KimiProvider extends BaseLLMProvider {
     'moonshot-v1-128k',
   ];
 
-  private client: AxiosInstance;
+  private client: any;
   private apiKey: string;
 
   constructor(config: ProviderConfig) {

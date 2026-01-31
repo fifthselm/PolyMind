@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosInstance } from 'axios';
+import axios from 'axios';
 import * as crypto from 'crypto';
 import { BaseLLMProvider } from '../base/base.provider';
 import { 
@@ -44,7 +44,7 @@ export class WenxinProvider extends BaseLLMProvider {
     }
 
     try {
-      const response = await axios.get(
+      const response = await (axios as any).get(
         'https://aip.baidubce.com/oauth/2.0/token',
         {
           params: {
@@ -57,7 +57,7 @@ export class WenxinProvider extends BaseLLMProvider {
 
       this.accessToken = response.data.access_token;
       this.tokenExpiry = Date.now() + (response.data.expires_in - 300) * 1000;
-      return this.accessToken;
+      return this.accessToken!;
     } catch (error) {
       throw new Error('获取百度access token失败');
     }
@@ -71,7 +71,7 @@ export class WenxinProvider extends BaseLLMProvider {
       const accessToken = await this.getAccessToken();
       const payload = this.buildPayload(options);
       
-      const response = await axios.post(
+      const response = await (axios as any).post(
         `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${options.model}?access_token=${accessToken}`,
         payload
       );
@@ -93,7 +93,7 @@ export class WenxinProvider extends BaseLLMProvider {
       const accessToken = await this.getAccessToken();
       const payload = this.buildPayload({ ...options, stream: true });
       
-      const response = await axios.post(
+      const response = await (axios as any).post(
         `https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/${options.model}?access_token=${accessToken}`,
         payload,
         {

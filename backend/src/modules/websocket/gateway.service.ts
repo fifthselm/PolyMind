@@ -49,7 +49,10 @@ export class GatewayService {
     if (!this.userSockets.has(user.id)) {
       this.userSockets.set(user.id, new Set());
     }
-    this.userSockets.get(user.id).add(client.id);
+    const userSocketSet = this.userSockets.get(user.id);
+    if (userSocketSet) {
+      userSocketSet.add(client.id);
+    }
 
     this.connectedUsers.set(client.id, {
       id: user.id,
