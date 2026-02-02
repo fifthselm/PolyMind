@@ -20,6 +20,10 @@ export class SendMessageDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, any>;
+
+  @IsOptional()
+  @IsEnum(['normal', 'search', 'deep_think'])
+  mode?: 'normal' | 'search' | 'deep_think';
 }
 
 export class PaginationQueryDto {

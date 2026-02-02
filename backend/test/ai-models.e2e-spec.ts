@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../../src/app.module';
-import { PrismaService } from '../../src/providers/prisma.service';
+import { AppModule } from '../src/app.module';
+import { PrismaService } from '../src/providers/prisma.service';
 
 // 测试数据
 const testUser = {
@@ -20,10 +20,11 @@ describe('AI Chat Module (e2e)', () => {
   let prisma: PrismaService;
 
   beforeAll(async () => {
-    app = Test.createTestingModule({
+    const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
+    app = moduleRef.createNestApplication();
     await app.init();
     
     app.useGlobalPipes(

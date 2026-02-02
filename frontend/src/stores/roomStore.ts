@@ -27,6 +27,7 @@ interface RoomMember {
   aiModelId?: string;
   memberType: 'human' | 'ai';
   role: 'owner' | 'admin' | 'member';
+  aiPrompt?: string;
   joinedAt: Date;
   user?: {
     id: string;
@@ -86,9 +87,14 @@ export const useRoomStore = create<RoomState>((set) => ({
   
   setMessages: (messages) => set({ messages }),
   
-  addMessage: (message) => set((state) => ({
-    messages: [...state.messages, message],
-  })),
+  addMessage: (message) => set((state) => {
+    // 检查是否已存在相同ID的消息，防止重复
+    const exists = state.messages.some((m) => m.id === message.id);
+    if (exists) {
+      return { messages: state.messages };
+    }
+    return { messages: [...state.messages, message] };
+  }),
   
   updateMessage: (messageId, content) => set((state) => ({
     messages: state.messages.map((m) =>

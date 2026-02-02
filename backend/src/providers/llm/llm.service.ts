@@ -8,7 +8,7 @@ import { WenxinProvider } from './providers/wenxin.provider';
 import { GLMProvider } from './providers/glm.provider';
 import { KimiProvider } from './providers/kimi.provider';
 import { DeepSeekProvider } from './providers/deepseek.provider';
-import { LLMMessage, LLMRequestOptions, LLMResponse, StreamingCallbacks } from './base/types';
+import { LLMMessage, LLMRequestOptions, LLMResponse, StreamingCallbacks, ProviderConfig } from './base/types';
 
 @Injectable()
 export class LLMService {
@@ -46,9 +46,10 @@ export class LLMService {
    * 获取Provider
    */
   getProvider(provider: string): BaseLLMProvider {
-    const p = this.providers.get(provider.toLowerCase());
+    const normalizedProvider = this.normalizeProviderName(provider);
+    const p = this.providers.get(normalizedProvider);
     if (!p) {
-      throw new Error(`不支持的AI提供商: ${provider}`);
+      throw new Error(`不支持的AI提供商: ${provider} (标准化后: ${normalizedProvider})`);
     }
     return p;
   }
@@ -64,7 +65,8 @@ export class LLMService {
    * 检查提供商是否支持
    */
   isProviderSupported(provider: string): boolean {
-    return this.providers.has(provider.toLowerCase());
+    const normalizedProvider = this.normalizeProviderName(provider);
+    return this.providers.has(normalizedProvider);
   }
 
   /**
@@ -74,7 +76,8 @@ export class LLMService {
     provider: string,
     options: LLMRequestOptions
   ): Promise<LLMResponse> {
-    const llmProvider = this.getProvider(provider);
+    const normalizedProvider = this.normalizeProviderName(provider);
+    const llmProvider = this.getProvider(normalizedProvider);
     return llmProvider.sendMessage(options);
   }
 
@@ -86,16 +89,50 @@ export class LLMService {
     options: LLMRequestOptions,
     callbacks: StreamingCallbacks
   ): Promise<void> {
-    const llmProvider = this.getProvider(provider);
+    const normalizedProvider = this.normalizeProviderName(provider);
+    const llmProvider = this.getProvider(normalizedProvider);
     return llmProvider.streamMessage(options, callbacks);
   }
 
   /**
-   * 验证API Key
+   * 使用动态配置流式发送消息
    */
-  async validateApiKey(provider: string): Promise<boolean> {
+  async streamMessageWithConfig(
+    provider: string,
+    options: LLMRequestOptions,
+    callbacks: StreamingCallbacks,
+    config?: Partial<ProviderConfig>
+  ): Promise<void> {
+    const llmProvider = this.getProviderWithConfig(provider, config);
+    return llmProvider.streamMessage(options, callbacks);
+  }
+
+  /**
+   * 验证API Key（使用默认配置）
+   */
+  async validateApiKey(provider: string): Promise<boolean>;
+  /**
+   * 验证API Key（使用自定义配置）
+   */
+  async validateApiKey(provider: string, config: Partial<ProviderConfig>): Promise<boolean>;
+  /**
+   * 验证API Key实现
+   */
+  async validateApiKey(provider: string, config?: Partial<ProviderConfig>): Promise<boolean> {
+    if (config) {
+      const llmProvider = this.getProviderWithConfig(provider, config);
+      return llmProvider.validateApiKey();
+    }
     const llmProvider = this.getProvider(provider);
     return llmProvider.validateApiKey();
+  }
+
+  async getModelListWithConfig(
+    provider: string,
+    config?: Partial<ProviderConfig>
+  ): Promise<string[]> {
+    const llmProvider = this.getProviderWithConfig(provider, config);
+    return llmProvider.getModelList();
   }
 
   /**
@@ -161,5 +198,115 @@ export class LLMService {
       temperature: temperature ?? 0.7,
       maxTokens: maxTokens ?? 2048,
     };
+  }
+
+  /**
+   * 标准化provider名称（处理显示名称到技术标识符的映射）
+   */
+  private normalizeProviderName(provider: string): string {
+    const providerLower = provider.toLowerCase().trim();
+
+    // 直接匹配技术标识符
+    const directMatches = ['openai', 'claude', 'gemini', 'qwen', 'wenxin', 'glm', 'kimi', 'deepseek', 'custom'];
+    if (directMatches.includes(providerLower)) {
+      return providerLower;
+    }
+
+    // 中文/显示名称映射
+    const nameMappings: Record<string, string> = {
+      // 阿里云/通义千问
+      '阿里云': 'qwen',
+      '通义千问': 'qwen',
+      'qwen': 'qwen',
+      // DeepSeek
+      'deepseek': 'deepseek',
+      '深度求索': 'deepseek',
+      // OpenAI
+      'openai': 'openai',
+      // Claude
+      'claude': 'claude',
+      'anthropic': 'claude',
+      // Gemini
+      'gemini': 'gemini',
+      'google': 'gemini',
+      // 文心一言
+      'wenxin': 'wenxin',
+      '文心一言': 'wenxin',
+      '百度': 'wenxin',
+      // GLM
+      'glm': 'glm',
+      'chatglm': 'glm',
+      '智谱': 'glm',
+      // Kimi
+      'kimi': 'kimi',
+      'moonshot': 'kimi',
+    };
+
+    // 尝试部分匹配
+    for (const [key, value] of Object.entries(nameMappings)) {
+      if (providerLower.includes(key)) {
+        return value;
+      }
+    }
+
+    // 如果没有匹配，返回原始值（可能报错）
+    return providerLower;
+  }
+
+  private getProviderWithConfig(
+    provider: string,
+    config?: Partial<ProviderConfig>
+  ): BaseLLMProvider {
+    const hasConfig = Boolean(config?.apiKey || config?.apiEndpoint);
+
+    // 标准化provider名称
+    const normalizedProvider = this.normalizeProviderName(provider);
+
+    if (!hasConfig) {
+      return this.getProvider(normalizedProvider);
+    }
+
+    const providerLower = normalizedProvider;
+    const isOpenAI = providerLower === 'openai';
+
+    // 处理API Endpoint格式
+    let apiEndpoint = config?.apiEndpoint;
+    if (apiEndpoint && isOpenAI) {
+      // 确保OpenAI端点以/v1结尾
+      if (!apiEndpoint.endsWith('/v1')) {
+        apiEndpoint = apiEndpoint.replace(/\/+$/, '') + '/v1';
+      }
+    }
+
+    const normalizedConfig: ProviderConfig = {
+      apiKey: config?.apiKey !== undefined && config?.apiKey !== null 
+        ? config.apiKey 
+        : (isOpenAI ? process.env.OPENAI_API_KEY || '' : ''),
+      apiEndpoint: apiEndpoint || (isOpenAI ? process.env.OPENAI_API_ENDPOINT : undefined),
+      organizationId: config?.organizationId,
+      timeout: config?.timeout ?? 60000,
+      maxRetries: config?.maxRetries ?? 3,
+    };
+
+    switch (providerLower) {
+      case 'openai':
+        return new OpenAIProvider(normalizedConfig);
+      case 'claude':
+        return new ClaudeProvider(normalizedConfig);
+      case 'gemini':
+        return new GeminiProvider(normalizedConfig);
+      case 'qwen':
+        return new QwenProvider(normalizedConfig);
+      case 'wenxin':
+        return new WenxinProvider(normalizedConfig);
+      case 'glm':
+        return new GLMProvider(normalizedConfig);
+      case 'kimi':
+        return new KimiProvider(normalizedConfig);
+      case 'deepseek':
+        return new DeepSeekProvider(normalizedConfig);
+      default:
+        return this.getProvider(provider);
+    }
   }
 }

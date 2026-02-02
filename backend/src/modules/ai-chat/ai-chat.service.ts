@@ -2,13 +2,48 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../providers/prisma.service';
 import { LLMService } from '../../providers/llm/llm.service';
 import { GatewayGateway } from '../websocket/gateway.gateway';
+import { WebSearchService } from '../web-search/web-search.service';
 import { LLMMessage, StreamingCallbacks } from '../../providers/llm/base/types';
 
+// 类型定义 - 替换 any 类型
 interface ChatContext {
   roomId: string;
   aiModelId: string;
   messages: Array<{ role: string; content: string }>;
   systemPrompt?: string;
+}
+
+interface RoomMemberWithAI {
+  id: string;
+  roomId: string;
+  userId?: string | null;
+  aiModelId?: string | null;
+  memberType: 'human' | 'ai';
+  role: 'owner' | 'admin' | 'member';
+  aiPrompt?: string | null;
+  joinedAt: Date;
+  aiModel?: {
+    id: string;
+    provider: string;
+    modelName: string;
+    displayName: string;
+    apiEndpoint?: string | null;
+    apiKeyEncrypted?: string | null;
+    systemPrompt?: string | null;
+    temperature: number;
+    maxTokens: number;
+  } | null;
+}
+
+interface MessageWithSender {
+  id: string;
+  senderType: 'human' | 'ai';
+  content: string;
+}
+
+interface ContextMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
 }
 
 @Injectable()
@@ -25,6 +60,7 @@ export class AIChatService {
     private readonly prisma: PrismaService,
     private readonly llmService: LLMService,
     private readonly gateway: GatewayGateway,
+    private readonly webSearchService: WebSearchService,
   ) {}
 
   /**
@@ -35,6 +71,7 @@ export class AIChatService {
     userMessage: string,
     userId: string,
     mentions: string[] = [],
+    mode: 'normal' | 'search' | 'deep_think' = 'normal',
   ): Promise<void> {
     // 获取房间内的所有AI模型
     const aiMembers = await this.prisma.roomMember.findMany({
@@ -47,8 +84,24 @@ export class AIChatService {
       },
     });
 
-    // 并行调用所有AI模型
-    const promises = aiMembers.map(async (member) => {
+    // 过滤出需要响应的AI成员
+    let targetMembers = aiMembers;
+    
+    if (mentions.length > 0) {
+      // 如果用户@了特定成员，只让被@的AI响应
+      targetMembers = aiMembers.filter((member: RoomMemberWithAI) => 
+        mentions.includes(member.id)
+      );
+      this.logger.log(`用户@了特定AI，只响应: ${targetMembers.map(m => m.aiModel?.displayName).join(', ')}`);
+    } else {
+      // 如果没有@任何AI，所有AI都不响应（避免插嘴）
+      // 或者可以选择让一个默认AI响应
+      this.logger.log('用户没有@任何AI，所有AI保持沉默');
+      return;
+    }
+
+    // 并行调用目标AI模型
+    const promises = targetMembers.map(async (member: RoomMemberWithAI) => {
       if (member.aiModel) {
         await this.processSingleAI(
           roomId,
@@ -56,6 +109,8 @@ export class AIChatService {
           userMessage,
           userId,
           mentions,
+          member.aiPrompt ?? undefined,
+          mode,
         );
       }
     });
@@ -68,23 +123,73 @@ export class AIChatService {
    */
   async processSingleAI(
     roomId: string,
-    aiModel: any,
+    aiModel: RoomMemberWithAI['aiModel'],
     userMessage: string,
     userId: string,
     mentions: string[] = [],
+    memberPrompt?: string,
+    mode: 'normal' | 'search' | 'deep_think' = 'normal',
   ): Promise<void> {
+    if (!aiModel) {
+      this.logger.error('AI模型不存在');
+      return;
+    }
+
     try {
       // 获取对话上下文
-      const context = await this.getContext(roomId, aiModel.id, aiModel.systemPrompt);
+      const combinedPrompt = [aiModel.systemPrompt, memberPrompt].filter(Boolean).join('\n\n');
+      const context = await this.getContext(roomId, aiModel.id, combinedPrompt || undefined);
 
-      // 构建消息
-      const messages: LLMMessage[] = context.messages.map(msg => ({
-        role: msg.role as any,
-        content: msg.content,
-      }));
+      // 构建消息（映射角色：human -> user, ai -> assistant）
+      const messages: LLMMessage[] = context.messages.map((msg: ContextMessage) => {
+        const roleMap: Record<string, 'system' | 'user' | 'assistant'> = {
+          'system': 'system',
+          'human': 'user',
+          'ai': 'assistant',
+          'user': 'user',
+          'assistant': 'assistant',
+        };
+        return {
+          role: roleMap[msg.role] || 'user',
+          content: msg.content,
+        };
+      });
 
-      // 添加用户消息
-      messages.push({ role: 'user', content: userMessage });
+      // 如果有system prompt，添加为第一条消息
+      if (context.systemPrompt) {
+        messages.unshift({
+          role: 'system',
+          content: context.systemPrompt,
+        });
+      }
+
+      // 根据模式决定是否启用联网搜索
+      let finalUserMessage = userMessage;
+      
+      if (mode === 'search') {
+        this.logger.log(`[搜索模式] 启用联网搜索: ${userMessage.substring(0, 50)}...`);
+        
+        // 执行网络搜索
+        const searchResults = await this.webSearchService.search(userMessage, 5);
+        
+        if (searchResults.length > 0) {
+          // 构建带搜索结果的prompt
+          finalUserMessage = this.webSearchService.buildSearchPrompt(userMessage, searchResults);
+          this.logger.log(`搜索结果已整合到prompt，共${searchResults.length}条结果`);
+        } else {
+          this.logger.warn('联网搜索未返回结果，使用原始消息');
+        }
+      } else if (mode === 'deep_think') {
+        this.logger.log(`[深度思考模式] 启用深度推理: ${userMessage.substring(0, 50)}...`);
+        // 在system prompt中添加深度思考指令
+        messages.unshift({
+          role: 'system',
+          content: '你是一个深度思考助手。请仔细分析问题，提供深入、全面的回答。在回答之前，请先列出你的思考过程。',
+        });
+      }
+      
+      // 添加用户消息（可能是增强后的带搜索结果的消息）
+      messages.push({ role: 'user', content: finalUserMessage });
 
       // 创建AI消息（初始状态）
       const aiMessage = await this.prisma.message.create({
@@ -157,7 +262,27 @@ export class AIChatService {
         },
       };
 
-      await this.llmService.streamMessage(
+      // 验证API Key不能为空
+      if (!aiModel.apiKeyEncrypted || aiModel.apiKeyEncrypted.trim() === '') {
+        throw new Error(`模型"${aiModel.displayName}"的API Key为空，请检查模型配置`);
+      }
+
+      // 验证模型名称
+      if (!aiModel.modelName || aiModel.modelName.trim() === '') {
+        throw new Error(`模型"${aiModel.displayName}"的模型名称为空，请检查模型配置`);
+      }
+
+      // 准备API配置，确保endpoint格式正确
+      let apiEndpoint = aiModel.apiEndpoint || undefined;
+      if (apiEndpoint && aiModel.provider.toLowerCase() === 'openai') {
+        // 确保OpenAI端点以/v1结尾
+        if (!apiEndpoint.endsWith('/v1')) {
+          apiEndpoint = apiEndpoint.replace(/\/+$/, '') + '/v1';
+          this.logger.warn(`自动修正API Endpoint格式: ${aiModel.apiEndpoint} -> ${apiEndpoint}`);
+        }
+      }
+
+      await this.llmService.streamMessageWithConfig(
         aiModel.provider,
         {
           model: aiModel.modelName,
@@ -165,12 +290,30 @@ export class AIChatService {
           temperature: aiModel.temperature,
           maxTokens: aiModel.maxTokens,
         },
-        callbacks
+        callbacks,
+        {
+          apiKey: aiModel.apiKeyEncrypted,
+          apiEndpoint: apiEndpoint,
+        }
       );
 
     } catch (error) {
-      this.logger.error(`AI聊天处理失败: ${error}`);
-      throw error;
+      // 详细记录错误信息
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      this.logger.error(`AI聊天处理失败: ${errorMessage}`, {
+        roomId,
+        aiModelId: aiModel?.id,
+        aiModelName: aiModel?.displayName,
+        userId,
+        error: errorMessage,
+        stack: errorStack,
+        timestamp: new Date().toISOString(),
+      });
+
+      // 抛出更详细的错误
+      throw new Error(`AI响应失败: ${errorMessage}`);
     }
   }
 
@@ -192,7 +335,16 @@ export class AIChatService {
     let messages: Array<{ role: string; content: string }> = [];
 
     if (savedContext) {
-      messages = (savedContext.contextMessages as any) || [];
+      // 安全解析 contextMessages
+      const contextMessages = savedContext.contextMessages;
+      if (Array.isArray(contextMessages)) {
+        messages = contextMessages.map((msg: unknown) => {
+          if (msg && typeof msg === 'object' && 'role' in msg && 'content' in msg) {
+            return { role: String(msg.role), content: String(msg.content) };
+          }
+          return { role: 'user', content: String(msg) };
+        });
+      }
     } else {
       // 获取最近的对话历史
       const recentMessages = await this.prisma.message.findMany({
@@ -205,9 +357,13 @@ export class AIChatService {
         take: this.MAX_CONTEXT_MESSAGES,
       });
 
-      // 反转并构建上下文
-      messages = recentMessages.reverse().map(msg => ({
-        role: msg.senderType as 'system' | 'user' | 'assistant',
+      // 反转并构建上下文（映射角色）
+      const roleMap: Record<string, string> = {
+        'human': 'user',
+        'ai': 'assistant',
+      };
+      messages = recentMessages.reverse().map((msg: MessageWithSender) => ({
+        role: roleMap[msg.senderType] || 'user',
         content: msg.content,
       }));
     }
@@ -289,6 +445,38 @@ export class AIChatService {
         roomId_aiModelId: { roomId, aiModelId },
       },
     });
+  }
+
+  /**
+   * 判断是否启用联网搜索
+   * 基于消息内容智能判断
+   */
+  private shouldEnableWebSearch(userMessage: string): boolean {
+    // 检查消息中是否包含搜索关键词
+    const searchKeywords = [
+      '搜索', '查找', '查询', '最新', '新闻', '今天', '昨天', '最近',
+      'search', 'find', 'lookup', 'latest', 'news', 'today', 'recent',
+      '天气', '股价', '价格', '多少钱', '实时', '当前', '现在',
+      'weather', 'stock', 'price', 'current', 'now',
+    ];
+    
+    const lowerMessage = userMessage.toLowerCase();
+    const hasSearchKeyword = searchKeywords.some(keyword => 
+      lowerMessage.includes(keyword.toLowerCase())
+    );
+    
+    // 检查是否是事实性问题（包含数字、日期、特定名词）
+    const isFactualQuestion = /\d{4}年?|什么时候|多少|哪里|谁|什么|如何|为什么/.test(userMessage);
+    
+    // 简单的启发式规则：如果消息较短且包含关键词，启用搜索
+    const shouldSearch = (hasSearchKeyword && userMessage.length < 200) || 
+                         (isFactualQuestion && userMessage.length < 100);
+    
+    if (shouldSearch) {
+      this.logger.log(`消息触发联网搜索: "${userMessage.substring(0, 50)}..."`);
+    }
+    
+    return shouldSearch;
   }
 
   /**

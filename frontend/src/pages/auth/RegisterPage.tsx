@@ -12,15 +12,17 @@ const RegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
-  const onFinish = async (values: { email: string; username: string; password: string }) => {
+  const onFinish = async (values: { email: string; username: string; password: string; confirmPassword?: string }) => {
     setLoading(true);
     try {
-      const { user, accessToken } = await api.register(values);
+      const { confirmPassword, ...payload } = values;
+      const { user, accessToken } = await api.register(payload);
       setAuth(user, accessToken);
       message.success('注册成功');
       navigate('/dashboard');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '注册失败');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      message.error(axiosError.response?.data?.message || '注册失败');
     } finally {
       setLoading(false);
     }

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, List, Button, Modal, Form, Input, message, Empty, Spin } from 'antd';
-import { PlusOutlined, MessageOutlined, UserOutlined, TeamOutlined } from '@ant-design/icons';
-import { useRoomStore } from '../../stores/roomStore';
-import { api } from '../../services/api';
-import { socketService } from '../../services/socket';
+import { PlusOutlined, MessageOutlined, TeamOutlined } from '@ant-design/icons';
+import { useRoomStore } from '@/stores/roomStore';
+import { api } from '@/services/api';
+import { handleApiError } from '@/utils/errorHandler';
 
 const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -22,8 +22,8 @@ const DashboardPage: React.FC = () => {
     try {
       const data = await api.getRooms();
       setRooms(data);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '加载房间失败');
+    } catch (error: unknown) {
+      handleApiError(error, navigate, message, '加载房间失败');
     } finally {
       setLoading(false);
     }
@@ -36,8 +36,8 @@ const DashboardPage: React.FC = () => {
       setCreateModalVisible(false);
       form.resetFields();
       navigate(`/rooms/${room.id}`);
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '创建失败');
+    } catch (error: unknown) {
+      handleApiError(error, navigate, message, '创建失败');
     }
   };
 

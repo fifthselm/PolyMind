@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Input, Avatar, Button, Tooltip } from 'antd';
-import { SendOutlined } from '@ant-design/icons';
+import React, { useState, useRef } from 'react';
+import { Input, Button, Switch, Space, Tooltip } from 'antd';
+import { SendOutlined, GlobalOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { useRoomStore } from '../../stores/roomStore';
 import { useAuthStore } from '../../stores/authStore';
 import { socketService } from '../../services/socket';
@@ -37,7 +37,11 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
   const [sending, setSending] = useState(false);
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([]);
   
-  const inputRef = useRef<any>(null);
+  // AI模式开关
+  const [enableWebSearch, setEnableWebSearch] = useState(false);
+  const [enableDeepThink, setEnableDeepThink] = useState(false);
+  
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const { members } = useRoomStore();
   const { user } = useAuthStore();
 
@@ -137,10 +141,15 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
       await api.sendMessage(roomId, {
         content: value.trim(),
         mentions,
+        mode: enableWebSearch ? 'search' : enableDeepThink ? 'deep_think' : 'normal',
       });
 
-      // 发送WebSocket事件
-      socketService.sendMessage(roomId, value.trim(), { mentions });
+      // 发送WebSocket事件（包含模式信息）
+      socketService.sendMessage(roomId, value.trim(), { 
+        mentions,
+        enableWebSearch,
+        enableDeepThink,
+      });
 
       setValue('');
       setShowMention(false);
@@ -182,33 +191,77 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
 
   return (
     <div style={{ position: 'relative' }}>
-      <Input.TextArea
-        ref={inputRef}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        placeholder="输入消息，使用 @ 提及成员..."
-        autoSize={{ minRows: 1, maxRows: 4 }}
-        disabled={sending}
-        style={{ 
-          borderRadius: 20,
-          padding: '8px 50px 8px 16px',
-        }}
-      />
-      
-      <Button
-        type="primary"
-        shape="circle"
-        icon={<SendOutlined />}
-        onClick={handleSend}
-        disabled={!value.trim() || sending}
-        style={{
-          position: 'absolute',
-          right: 8,
-          top: '50%',
-          transform: 'translateY(-50%)',
-        }}
-      />
+      {/* AI模式开关工具栏 */}
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: 16, 
+        marginBottom: 8,
+        padding: '0 8px',
+      }}>
+        <Space>
+          <Tooltip title="联网搜索：AI将先搜索网络再回答">
+            <Switch
+              checked={enableWebSearch}
+              onChange={(checked) => {
+                setEnableWebSearch(checked);
+                if (checked) setEnableDeepThink(false); // 互斥
+              }}
+              checkedChildren={<><GlobalOutlined /> 联网</>}
+              unCheckedChildren={<GlobalOutlined />}
+              size="small"
+            />
+          </Tooltip>
+          
+          <Tooltip title="深度思考：更强的推理能力（需要模型支持）">
+            <Switch
+              checked={enableDeepThink}
+              onChange={(checked) => {
+                setEnableDeepThink(checked);
+                if (checked) setEnableWebSearch(false); // 互斥
+              }}
+              checkedChildren={<><ThunderboltOutlined /> 深度</>}
+              unCheckedChildren={<ThunderboltOutlined />}
+              size="small"
+            />
+          </Tooltip>
+        </Space>
+      </div>
+
+      <div style={{ position: 'relative' }}>
+        <Input.TextArea
+          ref={inputRef}
+          value={value}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          placeholder={enableWebSearch 
+            ? "🔍 联网搜索模式：AI将先搜索网络再回答" 
+            : enableDeepThink 
+              ? "🧠 深度思考模式：更强的推理能力" 
+              : "输入消息，使用 @ 提及成员..."
+          }
+          autoSize={{ minRows: 1, maxRows: 4 }}
+          disabled={sending}
+          style={{ 
+            borderRadius: 20,
+            padding: '8px 50px 8px 16px',
+          }}
+        />
+        
+        <Button
+          type="primary"
+          shape="circle"
+          icon={<SendOutlined />}
+          onClick={handleSend}
+          disabled={!value.trim() || sending}
+          style={{
+            position: 'absolute',
+            right: 8,
+            top: '50%',
+            transform: 'translateY(-50%)',
+          }}
+        />
+      </div>
 
       {/* 提及列表 */}
       {showMention && (

@@ -5,6 +5,8 @@ import { useAuthStore } from './stores/authStore';
 // 页面组件
 import LoginPage from './pages/auth/LoginPage';
 import RegisterPage from './pages/auth/RegisterPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import ChatRoomPage from './pages/ChatRoomPage';
 import ModelsPage from './pages/ModelsPage';
@@ -30,6 +32,8 @@ const App: React.FC = () => {
       {/* 公开路由 */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
       
       {/* 受保护路由 */}
       <Route

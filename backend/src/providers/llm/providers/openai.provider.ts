@@ -31,6 +31,12 @@ export class OpenAIProvider extends BaseLLMProvider {
   constructor(config: ProviderConfig) {
     super();
     this.apiKey = config.apiKey;
+
+    // API Key缺失时记录警告（不阻止启动，避免强制要求所有provider都配置）
+    if (!this.apiKey) {
+      Logger.warn('[OpenAIProvider] API Key未配置，该provider将不可用');
+    }
+
     this.client = axios.create({
       baseURL: config.apiEndpoint || 'https://api.openai.com/v1',
       timeout: config.timeout || 60000,
@@ -40,18 +46,33 @@ export class OpenAIProvider extends BaseLLMProvider {
         'OpenAI-Organization': config.organizationId,
       },
     });
+
+    // 添加响应拦截器用于错误处理
+    this.client.interceptors.response.use(
+      (response: unknown) => response,
+      (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          Logger.error('[OpenAIProvider] 401错误 - API Key无效或已过期');
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
   /**
    * 发送消息
    */
   async sendMessage(options: LLMRequestOptions): Promise<LLMResponse> {
+    if (!this.apiKey) {
+      throw new Error('OpenAI API Key未配置，无法发送消息');
+    }
+
     try {
       const payload = this.buildPayload(options);
       const response = await this.client.post('/chat/completions', payload);
       return this.transformResponse(response.data);
     } catch (error) {
-      throw this.handleError(error);
+      throw this.handleAxiosError(error);
     }
   }
 
@@ -62,9 +83,13 @@ export class OpenAIProvider extends BaseLLMProvider {
     options: LLMRequestOptions,
     callbacks: StreamingCallbacks
   ): Promise<void> {
+    if (!this.apiKey) {
+      throw new Error('OpenAI API Key未配置，无法发送流式消息');
+    }
+
     try {
       const payload = this.buildPayload({ ...options, stream: true });
-      
+
       const response = await this.client.post('/chat/completions', payload, {
         responseType: 'stream',
       });
@@ -75,11 +100,11 @@ export class OpenAIProvider extends BaseLLMProvider {
       return new Promise((resolve, reject) => {
         stream.on('data', (chunk: Buffer) => {
           const lines = chunk.toString().split('\n').filter(Boolean);
-          
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               const data = line.slice(6);
-              
+
               if (data === '[DONE]') {
                 callbacks.onComplete(fullContent);
                 resolve();
@@ -89,7 +114,7 @@ export class OpenAIProvider extends BaseLLMProvider {
               try {
                 const parsed = JSON.parse(data) as LLMStreamChunk;
                 const content = parsed.choices[0]?.delta?.content;
-                
+
                 if (content) {
                   fullContent += content;
                   callbacks.onChunk(parsed);
@@ -114,7 +139,7 @@ export class OpenAIProvider extends BaseLLMProvider {
         });
       });
     } catch (error) {
-      callbacks.onError(this.handleError(error));
+      callbacks.onError(this.handleAxiosError(error));
     }
   }
 
@@ -128,6 +153,40 @@ export class OpenAIProvider extends BaseLLMProvider {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * 处理Axios错误，提供详细的错误信息
+   */
+  private handleAxiosError(error: any): Error {
+    if (error?.response) {
+      const status = error.response.status;
+      const data = error.response.data;
+      const errorMessage = data?.error?.message || JSON.stringify(data);
+
+      switch (status) {
+        case 400:
+          return new Error(`请求参数错误 (400): ${errorMessage}. 请检查模型名称是否正确，或API端点配置是否有误。`);
+        case 401:
+          return new Error(`API Key无效 (401): ${errorMessage}. 请检查API Key是否正确。`);
+        case 404:
+          return new Error(`API端点或模型不存在 (404): ${errorMessage}. 请检查: 1) API Endpoint是否以/v1结尾 2) 模型名称是否正确`);
+        case 429:
+          return new Error(`请求过于频繁 (429): ${errorMessage}. 请稍后重试。`);
+        case 500:
+        case 502:
+        case 503:
+          return new Error(`服务器错误 (${status}): ${errorMessage}. AI服务暂时不可用，请稍后重试。`);
+        default:
+          return new Error(`API请求失败 (${status}): ${errorMessage}`);
+      }
+    }
+
+    if (error?.request) {
+      return new Error('无法连接到API服务器。请检查网络连接和API Endpoint配置。');
+    }
+
+    return new Error(`请求失败: ${error?.message || '未知错误'}`);
   }
 
   /**

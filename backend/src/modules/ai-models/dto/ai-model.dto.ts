@@ -2,8 +2,8 @@ import { IsString, IsOptional, IsNumber, IsEnum, Min, Max } from 'class-validato
 import { Type } from 'class-transformer';
 
 export class CreateAIModelDto {
-  @IsEnum(['openai', 'claude', 'gemini', 'qwen', 'wenxin', 'glm', 'kimi', 'custom'])
-  provider: 'openai' | 'claude' | 'gemini' | 'qwen' | 'wenxin' | 'glm' | 'kimi' | 'custom';
+  @IsEnum(['openai', 'claude', 'gemini', 'qwen', 'wenxin', 'glm', 'kimi', 'deepseek', 'custom'])
+  provider: 'openai' | 'claude' | 'gemini' | 'qwen' | 'wenxin' | 'glm' | 'kimi' | 'deepseek' | 'custom';
 
   @IsString()
   modelName: string;
@@ -15,8 +15,9 @@ export class CreateAIModelDto {
   @IsString()
   apiEndpoint?: string;
 
+  @IsOptional()
   @IsString()
-  apiKey: string;
+  apiKey?: string;
 
   @IsOptional()
   @IsString()
@@ -38,6 +39,10 @@ export class CreateAIModelDto {
 }
 
 export class UpdateAIModelDto {
+  @IsOptional()
+  @IsString()
+  modelName?: string;
+
   @IsOptional()
   @IsString()
   displayName?: string;
@@ -70,6 +75,60 @@ export class UpdateAIModelDto {
 
   @IsOptional()
   isActive?: boolean;
+}
+
+export class GetAvailableModelsDto {
+  @IsEnum(['openai', 'claude', 'gemini', 'qwen', 'wenxin', 'glm', 'kimi', 'deepseek', 'custom'])
+  provider: 'openai' | 'claude' | 'gemini' | 'qwen' | 'wenxin' | 'glm' | 'kimi' | 'deepseek' | 'custom';
+
+  @IsOptional()
+  @IsString()
+  apiKey?: string;
+
+  @IsOptional()
+  @IsString()
+  apiEndpoint?: string;
+}
+
+export class TestAndSaveModelDto {
+  @IsEnum(['openai', 'claude', 'gemini', 'qwen', 'wenxin', 'glm', 'kimi', 'deepseek', 'custom'])
+  provider: 'openai' | 'claude' | 'gemini' | 'qwen' | 'wenxin' | 'glm' | 'kimi' | 'deepseek' | 'custom';
+
+  @IsString()
+  modelName: string;
+
+  @IsString()
+  displayName: string;
+
+  @IsOptional()
+  @IsString()
+  apiEndpoint?: string;
+
+  @IsOptional()
+  @IsString()
+  apiKey?: string;
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(0)
+  @Max(2)
+  temperature?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  @Min(1)
+  @Max(32768)
+  maxTokens?: number;
+
+  @IsOptional()
+  @IsString()
+  id?: string; // 如果提供则更新，否则创建
 }
 
 export interface AIModelResponse {

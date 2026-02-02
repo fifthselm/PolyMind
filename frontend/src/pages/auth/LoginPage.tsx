@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Form, Input, Button, Card, message, Typography } from 'antd';
-import { UserOutlined, LockOutlined, MailOutlined } from '@ant-design/icons';
+import { LockOutlined, MailOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../../stores/authStore';
 import { api } from '../../services/api';
 
@@ -19,8 +19,9 @@ const LoginPage: React.FC = () => {
       setAuth(user, accessToken);
       message.success('登录成功');
       navigate('/dashboard');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '登录失败');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      message.error(axiosError.response?.data?.message || '登录失败');
     } finally {
       setLoading(false);
     }
@@ -61,6 +62,10 @@ const LoginPage: React.FC = () => {
           >
             <Input.Password prefix={<LockOutlined />} placeholder="密码" />
           </Form.Item>
+
+          <div style={{ textAlign: 'right', marginBottom: 16 }}>
+            <Link to="/forgot-password" style={{ fontSize: 14 }}>忘记密码？</Link>
+          </div>
 
           <Form.Item>
             <Button type="primary" htmlType="submit" loading={loading} block>

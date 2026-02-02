@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../providers/prisma.service';
 import { AIChatService } from '../ai-chat/ai-chat.service';
 import { GatewayGateway } from '../websocket/gateway.gateway';
@@ -6,6 +6,8 @@ import { SendMessageDto, MessageResponse } from './dto/message.dto';
 
 @Injectable()
 export class MessagesService {
+  private readonly logger = new Logger(MessagesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly aiChatService: AIChatService,
@@ -56,7 +58,7 @@ export class MessagesService {
 
     // 如果是人类用户发送的消息，检查是否有AI成员需要响应
     if (membership.memberType === 'human') {
-      this.triggerAIResponses(roomId, dto.content, senderId, dto.mentions || []);
+      this.triggerAIResponses(roomId, dto.content, senderId, dto.mentions || [], dto.mode);
     }
 
     return formattedMessage;
@@ -70,12 +72,14 @@ export class MessagesService {
     userMessage: string,
     userId: string,
     mentions: string[],
+    mode: 'normal' | 'search' | 'deep_think' = 'normal',
   ): Promise<void> {
     try {
       // 异步处理AI响应，不阻塞消息发送
-      this.aiChatService.processAIChat(roomId, userMessage, userId, mentions);
+      this.aiChatService.processAIChat(roomId, userMessage, userId, mentions, mode);
     } catch (error) {
-      this.logger.error(`AI响应触发失败: ${error}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(`AI响应触发失败: ${errorMessage}`);
     }
   }
 
@@ -195,25 +199,42 @@ export class MessagesService {
   /**
    * 格式化消息响应
    */
-  private formatMessageResponse(message: any): MessageResponse {
+  private formatMessageResponse(message: {
+    id: string;
+    roomId: string;
+    senderType: string;
+    senderUserId?: string | null;
+    senderAiModelId?: string | null;
+    content: string;
+    contentType: string;
+    replyToId?: string | null;
+    mentions?: string[];
+    metadata?: unknown;
+    isDeleted: boolean;
+    createdAt: Date;
+    updatedAt: Date;
+    senderUser?: { id: string; username: string; avatarUrl?: string | null } | null;
+    senderAiModel?: { id: string; displayName: string } | null;
+    replyTo?: { id: string; content: string; senderUserId?: string | null } | null;
+  }): MessageResponse {
     return {
       id: message.id,
       roomId: message.roomId,
-      senderType: message.senderType,
-      senderUserId: message.senderUserId,
-      senderAiModelId: message.senderAiModelId,
+      senderType: message.senderType as 'human' | 'ai',
+      senderUserId: message.senderUserId ?? undefined,
+      senderAiModelId: message.senderAiModelId ?? undefined,
       content: message.content,
-      contentType: message.contentType,
-      replyToId: message.replyToId,
-      mentions: message.mentions || [],
-      metadata: message.metadata,
+      contentType: message.contentType as 'text' | 'image' | 'file',
+      replyToId: message.replyToId ?? undefined,
+      mentions: message.mentions ?? [],
+      metadata: message.metadata as Record<string, unknown> | undefined,
       isDeleted: message.isDeleted,
       createdAt: message.createdAt,
       updatedAt: message.updatedAt,
       sender: message.senderUser ? {
         id: message.senderUser.id,
         username: message.senderUser.username,
-        avatarUrl: message.senderUser.avatarUrl,
+        avatarUrl: message.senderUser.avatarUrl ?? undefined,
       } : message.senderAiModel ? {
         id: message.senderAiModel.id,
         username: message.senderAiModel.displayName,
@@ -222,14 +243,8 @@ export class MessagesService {
       replyTo: message.replyTo ? {
         id: message.replyTo.id,
         content: message.replyTo.content,
-        senderUserId: message.replyTo.senderUserId,
+        senderUserId: message.replyTo.senderUserId ?? undefined,
       } : undefined,
-    };
-  }
-
-  private get logger() {
-    return {
-      error: (msg: string) => console.error(`[MessagesService] ${msg}`),
     };
   }
 }

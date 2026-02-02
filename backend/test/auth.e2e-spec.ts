@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as request from 'supertest';
-import { AppModule } from '../../src/app.module';
+import { AppModule } from '../src/app.module';
 
 // 测试数据
 const testUser = {
@@ -18,10 +18,11 @@ describe('Auth Module (e2e)', () => {
 
   beforeAll(async () => {
     // 创建测试应用
-    app = Test.createTestingModule({
+    const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
 
+    app = moduleRef.createNestApplication();
     await app.init();
     
     // 设置全局验证管道

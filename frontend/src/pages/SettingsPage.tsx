@@ -1,26 +1,25 @@
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, Avatar, Upload, message, Typography, Divider } from 'antd';
+import { Card, Form, Input, Button, Avatar, Upload, message, Typography } from 'antd';
 import { UserOutlined, UploadOutlined, SaveOutlined } from '@ant-design/icons';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../services/api';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 
 const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { user, updateUser } = useAuthStore();
   const [form] = Form.useForm();
 
-  const handleSubmit = async (values: any) => {
+  const handleSubmit = async (values: { username?: string; email?: string; avatarUrl?: string }) => {
     setLoading(true);
     try {
-      const updatedUser = await api.updateUser ? 
-        await api.updateUser(values) : 
-        values;
+      const updatedUser = await api.updateUser(values);
       updateUser(updatedUser);
       message.success('保存成功');
-    } catch (error: any) {
-      message.error(error.response?.data?.message || '保存失败');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { message?: string } } };
+      message.error(axiosError.response?.data?.message || '保存失败');
     } finally {
       setLoading(false);
     }

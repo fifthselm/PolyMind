@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Card, Table, Button, Modal, Form, Input, Select, Switch, message, Space, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TestOutlined } from '@ant-design/icons';
-import { api } from '../../services/api';
+import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { api } from '@/services/api';
 
 interface AIModel {
   id: string;
   provider: string;
   modelName: string;
   displayName: string;
+  apiEndpoint?: string;
   systemPrompt?: string;
   temperature: number;
   maxTokens: number;
@@ -34,7 +35,11 @@ const ModelsPage: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingModel, setEditingModel] = useState<AIModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [form] = Form.useForm();
+  const providerValue = Form.useWatch('provider', form);
+  const [modelOptions, setModelOptions] = useState<string[]>([]);
+  const [modelsLoading, setModelsLoading] = useState(false);
 
   useEffect(() => {
     loadModels();
@@ -55,6 +60,12 @@ const ModelsPage: React.FC = () => {
   const handleCreate = () => {
     setEditingModel(null);
     form.resetFields();
+    form.setFieldsValue({
+      temperature: 0.7,
+      maxTokens: 2048,
+    });
+    setModelOptions([]);
+    setShowAdvanced(false);
     setModalVisible(true);
   };
 
@@ -67,9 +78,49 @@ const ModelsPage: React.FC = () => {
       systemPrompt: model.systemPrompt,
       temperature: model.temperature,
       maxTokens: model.maxTokens,
+      apiEndpoint: model.apiEndpoint,
+      isActive: model.isActive,
     });
+    setModelOptions(model.modelName ? [model.modelName] : []);
+    setShowAdvanced(Boolean(model.systemPrompt || model.temperature || model.maxTokens));
     setModalVisible(true);
   };
+
+  const refreshModelOptions = async () => {
+    const provider = providerValue || editingModel?.provider;
+    const apiKey = form.getFieldValue('apiKey');
+    const apiEndpoint = form.getFieldValue('apiEndpoint');
+
+    if (!provider) {
+      message.error('请先选择提供商');
+      return;
+    }
+
+    if (!apiKey || apiKey.trim() === '') {
+      message.error('请先填写API Key');
+      return;
+    }
+
+    setModelsLoading(true);
+    try {
+      const result = await api.getAvailableModels({ provider, apiKey: apiKey.trim(), apiEndpoint });
+      setModelOptions(result.models || []);
+      if (result.models?.length && !form.getFieldValue('modelName')) {
+        form.setFieldsValue({ modelName: result.models[0] });
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || '获取模型列表失败');
+    } finally {
+      setModelsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!modalVisible) return;
+    if (editingModel) return;
+    setModelOptions([]);
+    form.setFieldsValue({ modelName: undefined });
+  }, [providerValue, modalVisible, editingModel, form]);
 
   const handleDelete = async (id: string) => {
     Modal.confirm({
@@ -105,11 +156,20 @@ const ModelsPage: React.FC = () => {
   const handleSubmit = async (values: any) => {
     setSubmitting(true);
     try {
+      const payload = { ...values };
+      if (!payload.apiEndpoint) delete payload.apiEndpoint;
+      if (!payload.apiKey || payload.apiKey.trim() === '') delete payload.apiKey;
+      if (!showAdvanced && !editingModel) {
+        delete payload.systemPrompt;
+        delete payload.temperature;
+        delete payload.maxTokens;
+      }
       if (editingModel) {
-        await api.updateModel(editingModel.id, values);
+        delete payload.provider;
+        await api.updateModel(editingModel.id, payload);
         message.success('更新成功');
       } else {
-        await api.createModel(values);
+        await api.createModel(payload);
         message.success('创建成功');
       }
       setModalVisible(false);
@@ -166,7 +226,7 @@ const ModelsPage: React.FC = () => {
         <Space>
           <Button
             type="text"
-            icon={<TestOutlined />}
+            icon={<CheckCircleOutlined />}
             onClick={() => handleTest(record.id)}
           >
             测试
@@ -231,7 +291,7 @@ const ModelsPage: React.FC = () => {
             label="提供商"
             rules={[{ required: true, message: '请选择提供商' }]}
           >
-            <Select placeholder="选择AI提供商">
+            <Select placeholder="选择AI提供商" disabled={Boolean(editingModel)}>
               {PROVIDER_OPTIONS.map(option => (
                 <Option key={option.value} value={option.value}>
                   {option.label}
@@ -245,34 +305,78 @@ const ModelsPage: React.FC = () => {
             label="模型名称"
             rules={[{ required: true, message: '请输入模型名称' }]}
           >
-            <Input placeholder="如：gpt-4、claude-3-opus" />
+            <Space.Compact style={{ width: '100%' }}>
+              <Select
+                placeholder="请先刷新模型列表"
+                loading={modelsLoading}
+                options={modelOptions.map((m) => ({ label: m, value: m }))}
+                showSearch
+                optionFilterProp="label"
+              />
+              <Button onClick={refreshModelOptions} loading={modelsLoading}>
+                刷新
+              </Button>
+            </Space.Compact>
           </Form.Item>
 
           <Form.Item
-            name="systemPrompt"
-            label="系统提示词"
+            name="apiKey"
+            label="API Key"
+            rules={[{ required: !editingModel, message: '请输入API Key' }]}
+            extra="⚠️ 提示：API Key将通过HTTPS加密传输，服务器加密存储"
           >
-            <Input.TextArea
-              placeholder="设置模型的角色和行为（如：你是我的AI助手）"
-              rows={3}
+            <Input.Password 
+              placeholder={editingModel ? '留空则不修改' : '请输入API Key'} 
+              visibilityToggle={{ visible: false }}
             />
           </Form.Item>
 
           <Form.Item
-            name="temperature"
-            label="温度 (0-2)"
-            rules={[{ required: true, message: '请输入温度值' }]}
+            name="apiEndpoint"
+            label="API URL"
           >
-            <Input type="number" min={0} max={2} step={0.1} placeholder="值越高回复越随机" />
+            <Input placeholder="可选，留空使用默认API地址" />
           </Form.Item>
 
           <Form.Item
-            name="maxTokens"
-            label="最大Token"
-            rules={[{ required: true, message: '请输入最大Token数' }]}
+            name="isActive"
+            label="启用状态"
+            valuePropName="checked"
           >
-            <Input type="number" min={1} max={32768} placeholder="单次回复的最大长度" />
+            <Switch />
           </Form.Item>
+
+          <Form.Item label="高级设置">
+            <Switch checked={showAdvanced} onChange={setShowAdvanced} />
+          </Form.Item>
+
+          {showAdvanced && (
+            <>
+              <Form.Item
+                name="systemPrompt"
+                label="系统提示词"
+              >
+                <Input.TextArea
+                  placeholder="设置模型的角色和行为（如：你是我的AI助手）"
+                  rows={3}
+                />
+              </Form.Item>
+
+              <Form.Item
+                name="temperature"
+                label="温度 (0-2)"
+              >
+                <Input type="number" min={0} max={2} step={0.1} placeholder="默认 0.7" />
+              </Form.Item>
+
+              <Form.Item
+                name="maxTokens"
+                label="最大Token"
+              >
+                <Input type="number" min={1} max={32768} placeholder="默认 2048" />
+              </Form.Item>
+            </>
+          )}
 
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Button onClick={() => setModalVisible(false)} style={{ marginRight: 8 }}>

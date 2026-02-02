@@ -1,10 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsNumber, IsEnum, Min, Max, MinLength, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class CreateRoomDto {
   @IsString()
-  @Min(1)
-  @Max(100)
+  @MinLength(1)
+  @MaxLength(100)
   name: string;
 
   @IsOptional()
@@ -26,8 +26,8 @@ export class CreateRoomDto {
 export class UpdateRoomDto {
   @IsOptional()
   @IsString()
-  @Min(1)
-  @Max(100)
+  @MinLength(1)
+  @MaxLength(100)
   name?: string;
 
   @IsOptional()
@@ -65,6 +65,10 @@ export class AddMemberDto {
   @IsOptional()
   @IsEnum(['owner', 'admin', 'member'])
   role?: 'owner' | 'admin' | 'member';
+
+  @IsOptional()
+  @IsString()
+  aiPrompt?: string;
 }
 
 export interface MemberResponse {
@@ -74,6 +78,7 @@ export interface MemberResponse {
   aiModelId?: string;
   memberType: 'human' | 'ai';
   role: 'owner' | 'admin' | 'member';
+  aiPrompt?: string;
   joinedAt: Date;
   user?: {
     id: string;

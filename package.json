@@ -1,0 +1,10 @@
+{
+  "devDependencies": {
+    "prisma": "^5.8.0"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "csurf": "^1.11.0",
+    "helmet": "^8.1.0"
+  }
+}

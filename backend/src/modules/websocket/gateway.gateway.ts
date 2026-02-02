@@ -10,9 +10,106 @@ import {
 import { Server, Socket } from 'socket.io';
 import { GatewayService } from './gateway.service';
 
+// WebSocket消息验证接口
+interface JoinRoomData {
+  roomId: string;
+}
+
+interface LeaveRoomData {
+  roomId: string;
+}
+
+interface SendMessageData {
+  roomId: string;
+  content: string;
+  replyToId?: string;
+  mentions?: string[];
+}
+
+interface TypingData {
+  roomId: string;
+}
+
+// 验证函数
+const isValidJoinRoomData = (data: unknown): data is JoinRoomData => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'roomId' in data &&
+    typeof (data as Record<string, unknown>).roomId === 'string' &&
+    (data as JoinRoomData).roomId.length > 0
+  );
+};
+
+const isValidLeaveRoomData = (data: unknown): data is LeaveRoomData => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'roomId' in data &&
+    typeof (data as Record<string, unknown>).roomId === 'string' &&
+    (data as LeaveRoomData).roomId.length > 0
+  );
+};
+
+const isValidSendMessageData = (data: unknown): data is SendMessageData => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'roomId' in data &&
+    'content' in data &&
+    typeof (data as Record<string, unknown>).roomId === 'string' &&
+    typeof (data as Record<string, unknown>).content === 'string' &&
+    (data as SendMessageData).content.length > 0 &&
+    (data as SendMessageData).content.length <= 10000 // 限制消息长度
+  );
+};
+
+const isValidTypingData = (data: unknown): data is TypingData => {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'roomId' in data &&
+    typeof (data as Record<string, unknown>).roomId === 'string' &&
+    (data as TypingData).roomId.length > 0
+  );
+};
+
+// 允许的localhost开发端口
+const ALLOWED_LOCALHOST_PORTS = [5173, 3000, 4173, 8080];
+
+/**
+ * 验证WebSocket origin是否允许
+ */
+function isWebSocketOriginAllowed(origin: string): boolean {
+  // 允许配置的来源
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:5173';
+  const allowedOrigins = corsOrigin.split(',').map((o) => o.trim());
+  
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+  
+  // 允许特定的localhost开发端口
+  const localhostMatch = origin.match(/^http:\/\/localhost:(\d+)$/);
+  if (localhostMatch) {
+    const port = parseInt(localhostMatch[1], 10);
+    if (ALLOWED_LOCALHOST_PORTS.includes(port)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 @WebSocketGateway({
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+    origin: (origin: string | undefined, callback: (err?: Error, success?: boolean) => void) => {
+      if (!origin || isWebSocketOriginAllowed(origin)) {
+        callback(undefined, true);
+      } else {
+        callback(new Error('Not allowed by CORS'), false);
+      }
+    },
     credentials: true,
   },
   namespace: '/',
@@ -43,8 +140,12 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('room:join')
   async handleJoinRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
+    @MessageBody() data: unknown,
   ): Promise<void> {
+    if (!isValidJoinRoomData(data)) {
+      client.emit('error', { message: '无效的加入房间请求' });
+      return;
+    }
     await this.gatewayService.joinRoom(client, data.roomId);
   }
 
@@ -54,8 +155,12 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('room:leave')
   async handleLeaveRoom(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
+    @MessageBody() data: unknown,
   ): Promise<void> {
+    if (!isValidLeaveRoomData(data)) {
+      client.emit('error', { message: '无效的离开房间请求' });
+      return;
+    }
     await this.gatewayService.leaveRoom(client, data.roomId);
   }
 
@@ -65,10 +170,20 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('message:send')
   async handleMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: any,
+    @MessageBody() data: unknown,
   ): Promise<void> {
+    if (!isValidSendMessageData(data)) {
+      client.emit('error', { message: '无效的消息格式' });
+      return;
+    }
     // 广播消息到房间
-    this.gatewayService.sendMessageToRoom(this.server, data.roomId, 'message:new', data);
+    const messageData = {
+      roomId: data.roomId,
+      content: data.content,
+      replyToId: data.replyToId,
+      mentions: data.mentions,
+    };
+    this.gatewayService.sendMessageToRoom(this.server, data.roomId, 'message:new', messageData);
   }
 
   /**
@@ -77,9 +192,12 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('typing:start')
   handleTypingStart(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
+    @MessageBody() data: unknown,
   ): void {
-    const user = this.gatewayService['connectedUsers']?.get(client.id);
+    if (!isValidTypingData(data)) {
+      return;
+    }
+    const user = this.gatewayService.getUserBySocketId(client.id);
     if (user) {
       this.server.to(data.roomId).emit('typing', {
         roomId: data.roomId,
@@ -96,9 +214,12 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('typing:stop')
   handleTypingStop(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { roomId: string },
+    @MessageBody() data: unknown,
   ): void {
-    const user = this.gatewayService['connectedUsers']?.get(client.id);
+    if (!isValidTypingData(data)) {
+      return;
+    }
+    const user = this.gatewayService.getUserBySocketId(client.id);
     if (user) {
       this.server.to(data.roomId).emit('typing', {
         roomId: data.roomId,

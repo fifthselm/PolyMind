@@ -133,7 +133,7 @@ export class GatewayService {
   /**
    * 发送消息到房间
    */
-  sendMessageToRoom(server: Server, roomId: string, event: string, data: any): void {
+  sendMessageToRoom(server: Server, roomId: string, event: string, data: Record<string, unknown>): void {
     server.to(roomId).emit(event, data);
   }
 
@@ -155,5 +155,12 @@ export class GatewayService {
       }
     });
     return users;
+  }
+
+  /**
+   * 通过socket ID获取用户信息
+   */
+  getUserBySocketId(socketId: string): ConnectedUser | undefined {
+    return this.connectedUsers.get(socketId);
   }
 }

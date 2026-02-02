@@ -50,6 +50,12 @@ class SocketService {
    */
   disconnect(): void {
     if (this.socket) {
+      // 清理所有事件监听器
+      this.eventListeners.forEach((_callbacks, event) => {
+        this.socket?.off(event);
+      });
+      this.eventListeners.clear();
+
       this.socket.disconnect();
       this.socket = null;
     }

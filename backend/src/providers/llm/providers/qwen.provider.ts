@@ -28,8 +28,11 @@ export class QwenProvider extends BaseLLMProvider {
 
   constructor(config: ProviderConfig) {
     super();
-    this.apiKey = config.apiKey;
-    const endpoint = config.apiEndpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1';
+    this.apiKey = (config.apiKey || '').trim();
+    const endpoint = this.normalizeEndpoint(
+      config.apiEndpoint || 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+      'compatible-mode/v1'
+    );
     
     this.client = axios.create({
       baseURL: endpoint,
@@ -46,6 +49,9 @@ export class QwenProvider extends BaseLLMProvider {
    */
   async sendMessage(options: LLMRequestOptions): Promise<LLMResponse> {
     try {
+      if (!this.apiKey) {
+        throw new Error('Qwen API Key 未配置');
+      }
       const payload = this.buildPayload(options);
       const response = await this.client.post('/chat/completions', payload);
       return this.transformResponse(response.data);
@@ -62,6 +68,9 @@ export class QwenProvider extends BaseLLMProvider {
     callbacks: StreamingCallbacks
   ): Promise<void> {
     try {
+      if (!this.apiKey) {
+        throw new Error('Qwen API Key 未配置');
+      }
       const payload = this.buildPayload({ ...options, stream: true });
       
       const response = await this.client.post('/chat/completions', payload, {
@@ -157,6 +166,21 @@ export class QwenProvider extends BaseLLMProvider {
       max_tokens: options.maxTokens ?? 2048,
       stream: options.stream ?? false,
     };
+  }
+
+  private normalizeEndpoint(raw: string, suffix: string): string {
+    let url = raw.trim().replace(/\/+$/, '');
+    url = url.replace(/\/chat\/completions$/, '');
+    if (url.includes('/api/v1/services')) {
+      return url;
+    }
+    if (!url.endsWith(`/${suffix}`) && !url.endsWith(suffix)) {
+      if (url.endsWith('/v1') && suffix === 'compatible-mode/v1') {
+        return url.replace(/\/v1$/, `/${suffix}`);
+      }
+      url = `${url}/${suffix}`;
+    }
+    return url;
   }
 
   /**

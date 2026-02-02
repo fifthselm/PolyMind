@@ -33,7 +33,8 @@ class ApiService {
         if (error.response?.status === 401) {
           // Token过期，清除登录状态
           clearAuthToken();
-          window.location.href = '/login';
+          // 使用自定义错误标记，让组件处理重定向
+          (error as unknown as Record<string, unknown>).shouldRedirectToLogin = true;
         }
         return Promise.reject(error);
       }
@@ -56,11 +57,16 @@ class ApiService {
     return response.data;
   }
 
+  async updateUser(data: { username?: string; email?: string; avatarUrl?: string }) {
+    const response = await this.client.put('/auth/me', data);
+    return response.data;
+  }
+
   // 房间相关
   async getRooms() {
-    const response = awaitrooms');
+    const response = await this.client.get('/rooms');
     return response.data;
-  this.client.get('/ }
+  }
 
   async getRoom(roomId: string) {
     const response = await this.client.get(`/rooms/${roomId}`);
@@ -82,7 +88,12 @@ class ApiService {
     return response.data;
   }
 
-  async addRoomMember(roomId: string, data: { memberType: 'human' | 'ai'; userId?: string; aiModelId?: string }) {
+  async getRoomMembers(roomId: string) {
+    const response = await this.client.get(`/rooms/${roomId}/members`);
+    return response.data;
+  }
+
+  async addRoomMember(roomId: string, data: { memberType: 'human' | 'ai'; userId?: string; aiModelId?: string; aiPrompt?: string }) {
     const response = await this.client.post(`/rooms/${roomId}/members`, data);
     return response.data;
   }
@@ -95,7 +106,7 @@ class ApiService {
     return response.data;
   }
 
-  async sendMessage(roomId: string, data: { content: string; contentType?: string; replyToId?: string; mentions?: string[] }) {
+  async sendMessage(roomId: string, data: { content: string; contentType?: string; replyToId?: string; mentions?: string[]; mode?: 'normal' | 'search' | 'deep_think' }) {
     const response = await this.client.post(`/rooms/${roomId}/messages`, data);
     return response.data;
   }
@@ -126,7 +137,7 @@ class ApiService {
     modelName: string;
     displayName: string;
     apiEndpoint?: string;
-    apiKey: string;
+    apiKey?: string;
     systemPrompt?: string;
     temperature?: number;
     maxTokens?: number;
@@ -155,6 +166,29 @@ class ApiService {
 
   async testModel(modelId: string) {
     const response = await this.client.post(`/models/${modelId}/test`);
+    return response.data;
+  }
+
+  async getAvailableModels(data: { provider: string; apiKey: string; apiEndpoint?: string }) {
+    const response = await this.client.post('/models/available', data);
+    return response.data;
+  }
+
+  // 密码重置
+  async forgotPassword(email: string) {
+    const response = await this.client.post('/auth/forgot-password', { email });
+    return response.data;
+  }
+
+  async resetPassword(token: string, password: string) {
+    console.log('[API] resetPassword called with token:', token.substring(0, 20) + '...');
+    const response = await this.client.post('/auth/reset-password', { token, password });
+    return response.data;
+  }
+
+  // 删除房间成员
+  async removeRoomMember(roomId: string, memberId: string) {
+    const response = await this.client.delete(`/rooms/${roomId}/members/${memberId}`);
     return response.data;
   }
 }

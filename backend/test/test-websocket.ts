@@ -3,8 +3,17 @@
  * 使用 Socket.io Client 进行测试
  */
 
-import { io, Socket } from 'socket.io-client';
+import io from 'socket.io-client';
 import { EventEmitter } from 'events';
+
+// 定义 Socket 类型
+interface Socket {
+  on(event: string, callback: (...args: any[]) => void): void;
+  once(event: string, callback: (...args: any[]) => void): void;
+  emit(event: string, ...args: any[]): void;
+  disconnect(): void;
+  connected: boolean;
+}
 
 interface TestResult {
   name: string;
@@ -40,12 +49,12 @@ class WebSocketTester extends EventEmitter {
         resolve();
       });
 
-      this.socket.on('connect_error', (error) => {
+      this.socket.on('connect_error', (error: Error) => {
         console.log('❌ WebSocket连接失败:', error.message);
         reject(error);
       });
 
-      this.socket.on('error', (error) => {
+      this.socket.on('error', (error: any) => {
         console.log('WebSocket错误:', error);
       });
     });

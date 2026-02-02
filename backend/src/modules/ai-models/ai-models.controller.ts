@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
 import { AIModelsService } from './ai-models.service';
-import { CreateAIModelDto, UpdateAIModelDto, AIModelResponse } from './dto/ai-model.dto';
+import { CreateAIModelDto, UpdateAIModelDto, AIModelResponse, GetAvailableModelsDto, TestAndSaveModelDto } from './dto/ai-model.dto';
 import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @Controller('models')
@@ -58,5 +58,25 @@ export class AIModelsController {
   @Post(':id/test')
   async test(@Param('id') id: string): Promise<{ success: boolean; message: string }> {
     return this.aiModelsService.test(id);
+  }
+
+  /**
+   * 测试并保存模型配置
+   * 先测试配置是否有效，测试通过后才保存到数据库
+   */
+  @Post('test-and-save')
+  async testAndSave(
+    @Body() dto: TestAndSaveModelDto,
+    @Request() req: any,
+  ): Promise<{ success: boolean; message: string; model?: AIModelResponse }> {
+    return this.aiModelsService.testAndSave(dto, req.user.id);
+  }
+
+  /**
+   * 获取可用模型列表
+   */
+  @Post('available')
+  async getAvailableModels(@Body() dto: GetAvailableModelsDto): Promise<{ models: string[] }> {
+    return this.aiModelsService.getAvailableModels(dto);
   }
 }

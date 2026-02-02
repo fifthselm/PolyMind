@@ -16,6 +16,6 @@ import { GatewayGateway } from './gateway.gateway';
     }),
   ],
   providers: [GatewayService, GatewayGateway],
-  exports: [GatewayService],
+  exports: [GatewayService, GatewayGateway],
 })
 export class WebsocketModule {}

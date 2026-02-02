@@ -15,8 +15,8 @@ export class RegisterDto {
   @IsString()
   @MinLength(8, { message: '密码至少8个字符' })
   @MaxLength(32, { message: '密码最多32个字符' })
-  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, {
-    message: '密码必须包含大小写字母、数字和特殊字符',
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])[A-Za-z\d@$!%*?&]{8,}$/, {
+    message: '密码必须包含大小写字母，至少8位',
   })
   password: string;
 }
@@ -42,4 +42,24 @@ export interface UserResponse {
 export interface AuthResponse {
   user: UserResponse;
   accessToken: string;
+}
+
+// 忘记密码请求DTO
+export class ForgotPasswordDto {
+  @IsEmail({}, { message: '请输入有效的邮箱地址' })
+  email: string;
+}
+
+// 重置密码请求DTO
+export class ResetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsString()
+  @MinLength(8, { message: '密码至少8个字符' })
+  @MaxLength(32, { message: '密码最多32个字符' })
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])[A-Za-z\d@$!%*?&]{8,}$/, {
+    message: '密码必须包含大小写字母，至少8位',
+  })
+  password: string;
 }

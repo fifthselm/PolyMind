@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BaseLLMProvider } from '../base/base.provider';
+import { BaseLLMProvider } from './base/base.provider';
 import { OpenAIProvider } from './providers/openai.provider';
 import { ClaudeProvider } from './providers/claude.provider';
 import { GeminiProvider } from './providers/gemini.provider';

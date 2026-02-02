@@ -28,15 +28,52 @@ import { ProviderConfig } from './base/types';
       }),
     },
     
-    // Providers
-    OpenAIProvider,
-    ClaudeProvider,
-    GeminiProvider,
-    QwenProvider,
-    WenxinProvider,
-    GLMProvider,
-    KimiProvider,
-    DeepSeekProvider,
+    // Providers - 使用 useFactory 注入配置
+    {
+      provide: 'OPENAI_CONFIG',
+      useFactory: (config: ProviderConfig) => config,
+      inject: ['PROVIDER_CONFIG'],
+    },
+    {
+      provide: OpenAIProvider,
+      useFactory: (config: ProviderConfig) => new OpenAIProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: ClaudeProvider,
+      useFactory: (config: ProviderConfig) => new ClaudeProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: GeminiProvider,
+      useFactory: (config: ProviderConfig) => new GeminiProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: QwenProvider,
+      useFactory: (config: ProviderConfig) => new QwenProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: WenxinProvider,
+      useFactory: (config: ProviderConfig) => new WenxinProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: GLMProvider,
+      useFactory: (config: ProviderConfig) => new GLMProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: KimiProvider,
+      useFactory: (config: ProviderConfig) => new KimiProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
+    {
+      provide: DeepSeekProvider,
+      useFactory: (config: ProviderConfig) => new DeepSeekProvider(config),
+      inject: [{ token: 'PROVIDER_CONFIG', optional: false }],
+    },
     
     // Factory
     LLMProviderFactory,

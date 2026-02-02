@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -24,12 +23,13 @@ model User {
   updatedAt     DateTime  @updatedAt
 
   // 关联关系
-  ownedRooms    ChatRoom[]        @relation("RoomOwner")
-  memberships   RoomMember[]      @relation("UserMembership")
-  sentMessages  Message[]         @relation("UserMessage")
-  readRecords   MessageRead[]
-  reactions     MessageReaction[]
-  aiModels      AIModel[]         @relation("AIModelCreator")
+  ownedRooms       ChatRoom[]           @relation("RoomOwner")
+  memberships      RoomMember[]         @relation("UserMembership")
+  sentMessages     Message[]            @relation("UserMessage")
+  readRecords      MessageRead[]
+  reactions        MessageReaction[]
+  aiModels         AIModel[]            @relation("AIModelCreator")
+  passwordResets   PasswordResetToken[] @relation("UserPasswordResets")
 
   @@map("users")
 }
@@ -108,6 +108,7 @@ model RoomMember {
   aiModelId   String?
   memberType  MemberType
   role        MemberRole  @default(member)
+  aiPrompt    String?
   joinedAt    DateTime    @default(now())
 
   // 关联关系
@@ -224,4 +225,23 @@ model AiConversationContext {
 
   @@unique([roomId, aiModelId])
   @@map("ai_conversation_contexts")
+}
+
+// ============================================
+// 密码重置令牌表
+// ============================================
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // 关联关系
+  user User @relation("UserPasswordResets", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
