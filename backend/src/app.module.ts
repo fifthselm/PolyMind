@@ -11,6 +11,9 @@ import { AIModelsModule } from './modules/ai-models/ai-models.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { TestModule } from './modules/test/test.module';
 import { WebSearchModule } from './modules/web-search/web-search.module';
+import { FilesModule } from './modules/files/files.module';
+import { RAGModule } from './modules/rag/rag.module';
+import { AgentTeamModule } from './modules/agent-team/agent-team.module';
 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PublicGuard } from './guards/public.guard';
@@ -49,6 +52,9 @@ import { PublicGuard } from './guards/public.guard';
     WebsocketModule,
     TestModule,
     WebSearchModule,
+    FilesModule,
+    RAGModule,
+    AgentTeamModule,
   ],
   providers: [
     // 速率限制守卫

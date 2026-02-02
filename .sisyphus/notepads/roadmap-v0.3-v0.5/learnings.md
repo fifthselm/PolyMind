@@ -1,36 +1,38 @@
 
-## 任务4完成记录
+## v0.4.0 任务4完成记录
 
 ### 完成时间
 2026-02-02
 
 ### 完成内容
-Markdown渲染增强：
-1. ✅ 完整的Markdown支持（GFM）
-   - react-markdown + remark-gfm
-   - 标题、列表、表格、引用、代码块
+Web搜索集成：
+1. ✅ Tavily API集成（推荐）
+   - 专为AI优化的搜索引擎
+   - 返回结构化内容
+   - 支持搜索深度配置
 
-2. ✅ 代码块语法高亮
-   - rehype-highlight
-   - 一键复制按钮
-   - 语言标签显示
+2. ✅ Google Custom Search回退
+   - 标准Google搜索API
+   - 需要API Key和CX
 
-3. ✅ LaTeX数学公式渲染
-   - remark-math + rehype-katex
-   - 行内公式和块级公式
+3. ✅ 智能降级
+   - Tavily -> Google -> 模拟数据
+   - 配置状态检查API
 
-4. ✅ Mermaid图表渲染
-   - 流程图、时序图、甘特图
-   - 异步渲染
+4. ✅ Prompt构建
+   - 自动整合搜索结果
+   - 引用标注[1][2][3]
 
-### 关键实现
-- MarkdownRenderer.tsx 组件
-- MarkdownRenderer.css 样式
-- 支持100+编程语言高亮
+### 环境变量
+- TAVILY_API_KEY - Tavily API密钥（推荐）
+- GOOGLE_API_KEY - Google API密钥
+- GOOGLE_CX - Google Custom Search ID
 
-### 技术债务
-无新增债务
+### API方法
+- search(query, limit) - 执行搜索
+- buildSearchPrompt(query, results) - 构建RAG提示词
+- getSearchConfigStatus() - 检查配置状态
 
 ### 下一步
-任务5：技术债务清理（可选）
-或直接进入v0.4.0阶段
+任务5：语音交互（可选）
+或提交v0.4.0版本

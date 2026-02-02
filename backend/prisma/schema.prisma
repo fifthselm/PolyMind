@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -30,6 +31,9 @@ model User {
   reactions        MessageReaction[]
   aiModels         AIModel[]            @relation("AIModelCreator")
   passwordResets   PasswordResetToken[] @relation("UserPasswordResets")
+  uploadedFiles    File[]
+  agentRoles       AgentRole[]
+  agentTeams       AgentTeam[]
 
   @@map("users")
 }
@@ -87,6 +91,8 @@ model ChatRoom {
   members     RoomMember[]
   messages    Message[]
   contexts    AiConversationContext[]
+  files       File[]
+  agentTeams  AgentTeam[]
 
   @@map("chat_rooms")
 }
@@ -244,4 +250,100 @@ model PasswordResetToken {
   @@index([token])
   @@index([userId])
   @@map("password_reset_tokens")
+}
+
+// ============================================
+// 文件表
+// ============================================
+model File {
+  id          String    @id @default(uuid())
+  filename    String    // 原始文件名
+  mimeType    String    // MIME类型
+  size        Int       // 文件大小（字节）
+  url         String    // 文件访问URL
+  storageType StorageType @default(local) // 存储类型
+  uploaderId  String    // 上传者ID
+  roomId      String?   // 关联的房间ID（可选）
+  messageId   String?   // 关联的消息ID（可选）
+  metadata    Json?     // 额外元数据（如图片尺寸、PDF页数等）
+  createdAt   DateTime  @default(now())
+
+  // 关联关系
+  uploader    User      @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  room        ChatRoom? @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@index([roomId])
+  @@index([uploaderId])
+  @@map("files")
+}
+
+// 存储类型枚举
+enum StorageType {
+  local       // 本地存储
+  s3          // AWS S3
+  oss         // 阿里云OSS
+  cos         // 腾讯云COS
+}
+
+// ============================================
+// Agent角色表
+// ============================================
+model AgentRole {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  systemPrompt String   @db.Text
+  avatarUrl   String?
+  isTemplate  Boolean   @default(false)
+  createdById String?
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联关系
+  createdBy   User?     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  teamAgents  AgentTeamAgent[]
+
+  @@index([isTemplate])
+  @@map("agent_roles")
+}
+
+// ============================================
+// Agent团队表
+// ============================================
+model AgentTeam {
+  id          String    @id @default(uuid())
+  name        String
+  description String?
+  mode        String    // 'parallel' | 'sequential' | 'debate'
+  roomId      String
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // 关联关系
+  room        ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  createdBy   User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  agents      AgentTeamAgent[]
+
+  @@index([roomId])
+  @@map("agent_teams")
+}
+
+// ============================================
+// Agent团队成员关联表
+// ============================================
+model AgentTeamAgent {
+  id        String    @id @default(uuid())
+  teamId    String
+  roleId    String
+  order     Int       @default(0)
+  condition String?   // 执行条件（用于条件分支）
+
+  // 关联关系
+  team      AgentTeam @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  role      AgentRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, roleId])
+  @@map("agent_team_agents")
 }

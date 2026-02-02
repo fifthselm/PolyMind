@@ -3,10 +3,16 @@
     "prisma": "^5.8.0"
   },
   "dependencies": {
+    "@langchain/community": "^1.1.10",
+    "@langchain/openai": "^1.2.4",
+    "cheerio": "^1.2.0",
+    "chromadb": "^3.2.2",
     "cookie-parser": "^1.4.7",
     "csurf": "^1.11.0",
     "helmet": "^8.1.0",
+    "mammoth": "^1.11.0",
     "mermaid": "^11.12.2",
+    "pdf-parse": "^2.4.5",
     "react-markdown": "^10.1.0",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
