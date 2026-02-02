@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Input, Button, Switch, Space, Tooltip } from 'antd';
-import { SendOutlined, GlobalOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { SendOutlined, GlobalOutlined, ThunderboltOutlined, RobotOutlined, TeamOutlined } from '@ant-design/icons';
 import { useRoomStore } from '../../stores/roomStore';
 import { useAuthStore } from '../../stores/authStore';
 import { socketService } from '../../services/socket';
@@ -53,6 +53,12 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
     return true;
   });
 
+  // 获取AI成员（用于快速@所有AI）
+  const aiMembers = members.filter(m => m.memberType === 'ai');
+  
+  // 获取人类成员
+  const humanMembers = members.filter(m => m.memberType === 'human' && m.userId !== user?.id);
+
   // 处理输入变化
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -71,12 +77,53 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
         setMentionQuery(textAfterAt);
         setShowMention(true);
         
-        // 过滤成员
+        // 特殊命令：@all 或 @所有人
+        if (textAfterAt.toLowerCase() === 'all' || textAfterAt === '所有人') {
+          setFilteredMembers(mentionableMembers);
+          setMentionIndex(0);
+          return;
+        }
+        
+        // 特殊命令：@ai 或 @AI（所有AI）
+        if (textAfterAt.toLowerCase() === 'ai' || textAfterAt === '所有AI') {
+          setFilteredMembers(aiMembers);
+          setMentionIndex(0);
+          return;
+        }
+        
+        // 过滤成员（支持拼音和模糊匹配）
         const filtered = mentionableMembers.filter(m => {
           const name = m.user?.username || m.aiModel?.displayName || '';
-          return name.toLowerCase().includes(textAfterAt.toLowerCase());
+          const query = textAfterAt.toLowerCase();
+          
+          // 精确匹配
+          if (name.toLowerCase().includes(query)) {
+            return true;
+          }
+          
+          // 首字母匹配（如 "gpt" 匹配 "GPT-4"）
+          const nameParts = name.toLowerCase().split(/[-_\s]+/);
+          const queryParts = query.split(/[-_\s]+/);
+          if (queryParts.every(qp => nameParts.some(np => np.startsWith(qp)))) {
+            return true;
+          }
+          
+          return false;
         });
-        setFilteredMembers(filtered);
+        
+        // 排序：AI成员优先，然后按匹配度排序
+        const sorted = filtered.sort((a, b) => {
+          // AI成员优先
+          if (a.memberType === 'ai' && b.memberType !== 'ai') return -1;
+          if (a.memberType !== 'ai' && b.memberType === 'ai') return 1;
+          
+          // 按名称长度排序（短的优先，通常更匹配）
+          const nameA = a.user?.username || a.aiModel?.displayName || '';
+          const nameB = b.user?.username || b.aiModel?.displayName || '';
+          return nameA.length - nameB.length;
+        });
+        
+        setFilteredMembers(sorted);
         setMentionIndex(0);
         return;
       }
@@ -195,7 +242,7 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
       <div style={{ 
         display: 'flex', 
         alignItems: 'center', 
-        gap: 16, 
+        justifyContent: 'space-between',
         marginBottom: 8,
         padding: '0 8px',
       }}>
@@ -225,6 +272,47 @@ const MessageInput: React.FC<MessageInputProps> = ({ roomId, onSend }) => {
               size="small"
             />
           </Tooltip>
+        </Space>
+        
+        {/* 快速@按钮 */}
+        <Space>
+          {aiMembers.length > 0 && (
+            <Tooltip title="@所有AI">
+              <Button
+                type="text"
+                size="small"
+                icon={<RobotOutlined />}
+                onClick={() => {
+                  const aiNames = aiMembers.map(m => m.aiModel?.displayName).filter(Boolean);
+                  const mentionText = aiNames.map(name => `@${name}`).join(' ') + ' ';
+                  setValue(prev => prev + mentionText);
+                  inputRef.current?.focus();
+                }}
+              >
+                @AI
+              </Button>
+            </Tooltip>
+          )}
+          
+          {mentionableMembers.length > 0 && (
+            <Tooltip title="@所有人">
+              <Button
+                type="text"
+                size="small"
+                icon={<TeamOutlined />}
+                onClick={() => {
+                  const allNames = mentionableMembers.map(m => 
+                    m.user?.username || m.aiModel?.displayName
+                  ).filter(Boolean);
+                  const mentionText = allNames.map(name => `@${name}`).join(' ') + ' ';
+                  setValue(prev => prev + mentionText);
+                  inputRef.current?.focus();
+                }}
+              >
+                @所有人
+              </Button>
+            </Tooltip>
+          )}
         </Space>
       </div>
 

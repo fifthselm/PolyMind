@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { AIChatService } from '../ai-chat/ai-chat.service';
 
 interface ConnectedUser {
   id: string;
@@ -14,7 +15,10 @@ export class GatewayService {
   private connectedUsers: Map<string, ConnectedUser> = new Map();
   private userSockets: Map<string, Set<string>> = new Map();
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly aiChatService: AIChatService,
+  ) {}
 
   /**
    * 验证用户Token
@@ -162,5 +166,19 @@ export class GatewayService {
    */
   getUserBySocketId(socketId: string): ConnectedUser | undefined {
     return this.connectedUsers.get(socketId);
+  }
+
+  /**
+   * 中断AI流式生成
+   */
+  async abortAIStreaming(messageId: string, roomId: string): Promise<boolean> {
+    return this.aiChatService.abortStreaming(messageId, roomId);
+  }
+
+  /**
+   * 获取活跃的流式生成会话列表
+   */
+  getActiveStreamingSessions(roomId?: string) {
+    return this.aiChatService.getActiveStreamingSessions(roomId);
   }
 }

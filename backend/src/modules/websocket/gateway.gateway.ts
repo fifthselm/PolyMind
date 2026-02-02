@@ -229,4 +229,77 @@ export class GatewayGateway implements OnGatewayConnection, OnGatewayDisconnect 
       });
     }
   }
+
+  /**
+   * 中断AI流式生成
+   */
+  @SubscribeMessage('message:ai:abort')
+  async handleAbortAIStreaming(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: unknown,
+  ): Promise<void> {
+    // 验证数据格式
+    if (!data || typeof data !== 'object' || !('messageId' in data) || !('roomId' in data)) {
+      client.emit('error', { message: '无效的中断请求格式' });
+      return;
+    }
+
+    const { messageId, roomId } = data as { messageId: string; roomId: string };
+
+    if (!messageId || typeof messageId !== 'string') {
+      client.emit('error', { message: '无效的消息ID' });
+      return;
+    }
+
+    if (!roomId || typeof roomId !== 'string') {
+      client.emit('error', { message: '无效的房间ID' });
+      return;
+    }
+
+    try {
+      const result = await this.gatewayService.abortAIStreaming(messageId, roomId);
+      
+      if (result) {
+        client.emit('message:ai:abort:success', { messageId, roomId });
+      } else {
+        client.emit('message:ai:abort:error', { 
+          messageId, 
+          roomId, 
+          error: '未找到活跃的流式生成会话' 
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : '中断生成失败';
+      client.emit('message:ai:abort:error', { 
+        messageId, 
+        roomId, 
+        error: errorMessage 
+      });
+    }
+  }
+
+  /**
+   * 获取活跃的流式生成会话列表
+   */
+  @SubscribeMessage('message:ai:streaming:sessions')
+  handleGetStreamingSessions(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: unknown,
+  ): void {
+    const roomId = data && typeof data === 'object' && 'roomId' in data 
+      ? (data as { roomId?: string }).roomId 
+      : undefined;
+    
+    const sessions = this.gatewayService.getActiveStreamingSessions(roomId);
+    
+    client.emit('message:ai:streaming:sessions:list', {
+      sessions: sessions.map(s => ({
+        messageId: s.messageId,
+        aiModelId: s.aiModelId,
+        roomId: s.roomId,
+        startTime: s.startTime,
+      })),
+      count: sessions.length,
+    });
+  }
 }

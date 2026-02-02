@@ -54,12 +54,23 @@ interface ChatRoom {
   members?: RoomMember[];
 }
 
+// 流式生成状态
+interface StreamingState {
+  messageId: string;
+  aiModelId: string;
+  aiModelName?: string;
+  content: string;
+  isStreaming: boolean;
+  startTime: number;
+}
+
 interface RoomState {
   rooms: ChatRoom[];
   currentRoom: ChatRoom | null;
   messages: Message[];
   members: RoomMember[];
   isLoading: boolean;
+  streamingStates: Map<string, StreamingState>; // messageId -> StreamingState
   
   // Actions
   setRooms: (rooms: ChatRoom[]) => void;
@@ -72,6 +83,14 @@ interface RoomState {
   addMember: (member: RoomMember) => void;
   removeMember: (memberId: string) => void;
   setLoading: (loading: boolean) => void;
+  
+  // Streaming Actions
+  startStreaming: (messageId: string, aiModelId: string, aiModelName?: string) => void;
+  updateStreamingContent: (messageId: string, chunk: string) => void;
+  stopStreaming: (messageId: string) => void;
+  getStreamingState: (messageId: string) => StreamingState | undefined;
+  getActiveStreamingMessages: () => string[];
+  clearStreamingState: (messageId: string) => void;
 }
 
 export const useRoomStore = create<RoomState>((set) => ({
@@ -119,4 +138,59 @@ export const useRoomStore = create<RoomState>((set) => ({
   })),
   
   setLoading: (loading) => set({ isLoading: loading }),
+  
+  // Streaming Actions Implementation
+  startStreaming: (messageId, aiModelId, aiModelName) => set((state) => {
+    const newStreamingStates = new Map(state.streamingStates);
+    newStreamingStates.set(messageId, {
+      messageId,
+      aiModelId,
+      aiModelName,
+      content: '',
+      isStreaming: true,
+      startTime: Date.now(),
+    });
+    return { streamingStates: newStreamingStates };
+  }),
+  
+  updateStreamingContent: (messageId, chunk) => set((state) => {
+    const newStreamingStates = new Map(state.streamingStates);
+    const existingState = newStreamingStates.get(messageId);
+    if (existingState) {
+      newStreamingStates.set(messageId, {
+        ...existingState,
+        content: existingState.content + chunk,
+      });
+    }
+    return { streamingStates: newStreamingStates };
+  }),
+  
+  stopStreaming: (messageId) => set((state) => {
+    const newStreamingStates = new Map(state.streamingStates);
+    const existingState = newStreamingStates.get(messageId);
+    if (existingState) {
+      newStreamingStates.set(messageId, {
+        ...existingState,
+        isStreaming: false,
+      });
+    }
+    return { streamingStates: newStreamingStates };
+  }),
+  
+  getStreamingState: (messageId) => {
+    return useRoomStore.getState().streamingStates.get(messageId);
+  },
+  
+  getActiveStreamingMessages: () => {
+    const states = useRoomStore.getState().streamingStates;
+    return Array.from(states.entries())
+      .filter(([, state]) => state.isStreaming)
+      .map(([messageId]) => messageId);
+  },
+  
+  clearStreamingState: (messageId) => set((state) => {
+    const newStreamingStates = new Map(state.streamingStates);
+    newStreamingStates.delete(messageId);
+    return { streamingStates: newStreamingStates };
+  }),
 }));

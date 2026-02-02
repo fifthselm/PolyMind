@@ -101,6 +101,20 @@ class SocketService {
   }
 
   /**
+   * 中断AI流式生成
+   */
+  abortAIStreaming(messageId: string, roomId: string): void {
+    this.socket?.emit('message:ai:abort', { messageId, roomId });
+  }
+
+  /**
+   * 获取活跃的流式生成会话列表
+   */
+  getStreamingSessions(roomId?: string): void {
+    this.socket?.emit('message:ai:streaming:sessions', { roomId });
+  }
+
+  /**
    * 监听事件
    */
   on(event: string, callback: EventCallback): void {

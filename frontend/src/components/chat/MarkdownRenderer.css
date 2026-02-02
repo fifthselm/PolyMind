@@ -1,0 +1,263 @@
+/* Markdown 渲染样式 */
+
+.markdown-renderer {
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+/* 标题样式 */
+.markdown-renderer h1,
+.markdown-renderer h2,
+.markdown-renderer h3,
+.markdown-renderer h4,
+.markdown-renderer h5,
+.markdown-renderer h6 {
+  margin-top: 16px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-renderer h1 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #e1e4e8;
+  padding-bottom: 8px;
+}
+
+.markdown-renderer h2 {
+  font-size: 1.25em;
+  border-bottom: 1px solid #e1e4e8;
+  padding-bottom: 6px;
+}
+
+.markdown-renderer h3 {
+  font-size: 1.1em;
+}
+
+/* 段落和文本 */
+.markdown-renderer p {
+  margin-bottom: 12px;
+}
+
+.markdown-renderer strong {
+  font-weight: 600;
+}
+
+.markdown-renderer em {
+  font-style: italic;
+}
+
+.markdown-renderer del {
+  text-decoration: line-through;
+}
+
+/* 链接 */
+.markdown-renderer a {
+  color: #1890ff;
+  text-decoration: none;
+}
+
+.markdown-renderer a:hover {
+  text-decoration: underline;
+}
+
+/* 列表 */
+.markdown-renderer ul,
+.markdown-renderer ol {
+  margin-bottom: 12px;
+  padding-left: 24px;
+}
+
+.markdown-renderer li {
+  margin-bottom: 4px;
+}
+
+.markdown-renderer ul {
+  list-style-type: disc;
+}
+
+.markdown-renderer ol {
+  list-style-type: decimal;
+}
+
+/* 任务列表 */
+.markdown-renderer input[type="checkbox"] {
+  margin-right: 8px;
+}
+
+/* 代码块样式 */
+.code-block {
+  margin: 12px 0;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f6f8fa;
+  border: 1px solid #e1e4e8;
+}
+
+.code-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #f1f3f4;
+  border-bottom: 1px solid #e1e4e8;
+}
+
+.code-language {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+.copy-button {
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.copy-button:hover {
+  opacity: 1;
+}
+
+.code-block pre {
+  margin: 0;
+  padding: 12px;
+  overflow-x: auto;
+  background: #f6f8fa;
+}
+
+.code-block code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: transparent;
+  padding: 0;
+}
+
+/* 行内代码 */
+.markdown-renderer code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+  font-size: 0.9em;
+  background: rgba(175, 184, 193, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #24292f;
+}
+
+/* 表格样式 */
+.table-wrapper {
+  overflow-x: auto;
+  margin: 12px 0;
+}
+
+.markdown-renderer table {
+  width: 100%;
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+.markdown-renderer th,
+.markdown-renderer td {
+  padding: 8px 12px;
+  border: 1px solid #d0d7de;
+  text-align: left;
+}
+
+.markdown-renderer th {
+  background: #f6f8fa;
+  font-weight: 600;
+}
+
+.markdown-renderer tr:nth-child(2n) {
+  background: #f6f8fa;
+}
+
+/* 引用块 */
+.markdown-renderer blockquote {
+  margin: 12px 0;
+  padding: 12px 16px;
+  border-left: 4px solid #1890ff;
+  background: #f6f8fa;
+  color: #666;
+}
+
+.markdown-renderer blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* 分割线 */
+.markdown-renderer hr {
+  height: 1px;
+  padding: 0;
+  margin: 24px 0;
+  background-color: #e1e4e8;
+  border: 0;
+}
+
+/* 图片 */
+.markdown-renderer img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+/* Mermaid 图表 */
+.mermaid {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* LaTeX 公式 */
+.katex {
+  font-size: 1.1em;
+}
+
+.katex-display {
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+/* 暗色模式适配 */
+@media (prefers-color-scheme: dark) {
+  .markdown-renderer {
+    color: #c9d1d9;
+  }
+  
+  .code-block {
+    background: #161b22;
+    border-color: #30363d;
+  }
+  
+  .code-header {
+    background: #21262d;
+    border-color: #30363d;
+  }
+  
+  .code-block pre {
+    background: #161b22;
+  }
+  
+  .markdown-renderer code {
+    background: rgba(110, 118, 129, 0.2);
+    color: #c9d1d9;
+  }
+  
+  .markdown-renderer th {
+    background: #161b22;
+  }
+  
+  .markdown-renderer tr:nth-child(2n) {
+    background: #161b22;
+  }
+  
+  .markdown-renderer blockquote {
+    background: #161b22;
+    border-left-color: #58a6ff;
+  }
+}

@@ -46,6 +46,16 @@ interface ContextMessage {
   content: string;
 }
 
+// 流式生成会话管理
+interface StreamingSession {
+  abortController: AbortController;
+  messageId: string;
+  aiModelId: string;
+  roomId: string;
+  startTime: Date;
+  accumulatedContent: string;
+}
+
 @Injectable()
 export class AIChatService {
   private readonly logger = new Logger(AIChatService.name);
@@ -56,12 +66,62 @@ export class AIChatService {
   // Token限制（保守估计）
   private readonly MAX_TOKENS = 8000;
 
+  // 活跃的流式会话映射
+  private activeStreamingSessions = new Map<string, StreamingSession>();
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly llmService: LLMService,
     private readonly gateway: GatewayGateway,
     private readonly webSearchService: WebSearchService,
   ) {}
+
+  /**
+   * 中断指定的流式生成
+   */
+  async abortStreaming(messageId: string, roomId: string): Promise<boolean> {
+    const session = this.activeStreamingSessions.get(messageId);
+    
+    if (!session) {
+      this.logger.warn(`未找到流式会话: ${messageId}`);
+      return false;
+    }
+
+    // 中止生成
+    session.abortController.abort();
+    
+    // 更新数据库中的消息
+    await this.prisma.message.update({
+      where: { id: messageId },
+      data: { 
+        content: session.accumulatedContent + '\n\n[已中断生成]',
+      },
+    });
+
+    // 广播中断事件
+    this.gateway.server.to(roomId).emit('message:ai:aborted', {
+      messageId,
+      aiModelId: session.aiModelId,
+      content: session.accumulatedContent,
+    });
+
+    // 清理会话
+    this.activeStreamingSessions.delete(messageId);
+    
+    this.logger.log(`已中断流式生成: ${messageId}`);
+    return true;
+  }
+
+  /**
+   * 获取活跃的流式会话列表
+   */
+  getActiveStreamingSessions(roomId?: string): StreamingSession[] {
+    const sessions = Array.from(this.activeStreamingSessions.values());
+    if (roomId) {
+      return sessions.filter(s => s.roomId === roomId);
+    }
+    return sessions;
+  }
 
   /**
    * 处理AI聊天请求
@@ -205,47 +265,94 @@ export class AIChatService {
         },
       });
 
-      // 广播空消息表示AI正在生成
-      this.gateway.server.to(roomId).emit('message:ai:streaming', {
+      // 创建 AbortController 用于中断控制
+      const abortController = new AbortController();
+
+      // 创建流式会话
+      const streamingSession: StreamingSession = {
+        abortController,
+        messageId: aiMessage.id,
+        aiModelId: aiModel.id,
+        roomId,
+        startTime: new Date(),
+        accumulatedContent: '',
+      };
+
+      // 注册活跃会话
+      this.activeStreamingSessions.set(aiMessage.id, streamingSession);
+
+      // 广播流式开始事件
+      this.gateway.server.to(roomId).emit('message:ai:stream:start', {
         messageId: aiMessage.id,
         aiModelId: aiModel.id,
         aiModelName: aiModel.displayName,
-        isTyping: true,
+        timestamp: Date.now(),
       });
 
       // 流式调用AI
       const callbacks: StreamingCallbacks = {
         onChunk: (chunk) => {
+          // 检查是否已中断
+          if (abortController.signal.aborted) {
+            return;
+          }
+
           const content = chunk.choices[0]?.delta?.content || '';
           if (content) {
+            // 累加内容
+            streamingSession.accumulatedContent += content;
+            
             // 增量更新消息
-            this.gateway.server.to(roomId).emit('message:ai:streaming', {
+            this.gateway.server.to(roomId).emit('message:ai:stream:chunk', {
               messageId: aiMessage.id,
               aiModelId: aiModel.id,
               chunk: content,
-              isTyping: true,
+              accumulatedContent: streamingSession.accumulatedContent,
+              timestamp: Date.now(),
             });
           }
         },
         onComplete: async (fullContent) => {
+          // 清理会话
+          this.activeStreamingSessions.delete(aiMessage.id);
+
           // 更新消息内容
           await this.prisma.message.update({
             where: { id: aiMessage.id },
             data: { content: fullContent },
           });
 
-          // 广播完成
-          this.gateway.server.to(roomId).emit('message:ai:complete', {
+          // 广播完成事件
+          this.gateway.server.to(roomId).emit('message:ai:stream:end', {
             messageId: aiMessage.id,
             aiModelId: aiModel.id,
             content: fullContent,
+            timestamp: Date.now(),
+            duration: Date.now() - streamingSession.startTime.getTime(),
           });
 
           // 保存上下文
           await this.saveContext(roomId, aiModel.id, messages, fullContent);
+
+          // 检查AI响应中是否包含@提及（AI协作模式）
+          await this.processAIResponseMentions(
+            roomId,
+            aiModel,
+            fullContent,
+            aiMessage.id,
+          );
         },
         onError: async (error) => {
+          // 清理会话
+          this.activeStreamingSessions.delete(aiMessage.id);
+
           this.logger.error(`AI响应错误: ${error.message}`);
+
+          // 检查是否是中断导致的错误
+          if (abortController.signal.aborted) {
+            this.logger.log(`流式生成被中断: ${aiMessage.id}`);
+            return;
+          }
 
           // 更新消息为错误状态
           await this.prisma.message.update({
@@ -253,11 +360,12 @@ export class AIChatService {
             data: { content: '抱歉，我遇到了一些问题。' },
           });
 
-          // 广播错误
-          this.gateway.server.to(roomId).emit('message:ai:error', {
+          // 广播错误事件
+          this.gateway.server.to(roomId).emit('message:ai:stream:error', {
             messageId: aiMessage.id,
             aiModelId: aiModel.id,
             error: error.message,
+            timestamp: Date.now(),
           });
         },
       };
@@ -289,6 +397,7 @@ export class AIChatService {
           messages,
           temperature: aiModel.temperature,
           maxTokens: aiModel.maxTokens,
+          signal: abortController.signal, // 传递中断信号
         },
         callbacks,
         {
@@ -298,6 +407,15 @@ export class AIChatService {
       );
 
     } catch (error) {
+      // 清理会话（如果存在）
+      const sessionKeys = Array.from(this.activeStreamingSessions.keys());
+      for (const key of sessionKeys) {
+        const session = this.activeStreamingSessions.get(key);
+        if (session?.aiModelId === aiModel?.id && session?.roomId === roomId) {
+          this.activeStreamingSessions.delete(key);
+        }
+      }
+
       // 详细记录错误信息
       const errorMessage = error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
@@ -477,6 +595,96 @@ export class AIChatService {
     }
     
     return shouldSearch;
+  }
+
+  /**
+   * 处理AI响应中的@提及（AI协作模式）
+   * 当AI在回复中@其他AI时，触发被@的AI响应
+   */
+  private async processAIResponseMentions(
+    roomId: string,
+    fromAiModel: RoomMemberWithAI['aiModel'],
+    content: string,
+    originalMessageId: string,
+  ): Promise<void> {
+    if (!fromAiModel) return;
+
+    // 解析AI响应中的@提及
+    const mentions = this.extractMentionsFromContent(content);
+    if (mentions.length === 0) return;
+
+    this.logger.log(`[AI协作] ${fromAiModel.displayName} 的回复中@了: ${mentions.join(', ')}`);
+
+    // 获取房间内所有AI成员
+    const aiMembers = await this.prisma.roomMember.findMany({
+      where: {
+        roomId,
+        memberType: 'ai',
+      },
+      include: {
+        aiModel: true,
+      },
+    });
+
+    // 找到被@的AI
+    const mentionedAiMembers = aiMembers.filter(member => {
+      if (!member.aiModel) return false;
+      const aiName = member.aiModel.displayName.toLowerCase();
+      return mentions.some(mention => 
+        aiName.includes(mention.toLowerCase()) ||
+        mention.toLowerCase().includes(aiName)
+      );
+    });
+
+    // 排除自己（AI不应该@自己）
+    const targetMembers = mentionedAiMembers.filter(m => m.aiModel?.id !== fromAiModel.id);
+
+    if (targetMembers.length === 0) {
+      this.logger.log('[AI协作] 未找到被@的AI成员');
+      return;
+    }
+
+    this.logger.log(`[AI协作] 触发 ${targetMembers.length} 个AI响应`);
+
+    // 延迟触发被@的AI（避免立即响应，让对话更自然）
+    const delay = 1000 + Math.random() * 2000; // 1-3秒随机延迟
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
+
+    // 并行触发被@的AI
+    const promises = targetMembers.map(async (member) => {
+      if (member.aiModel) {
+        // 构建上下文：包含原始消息和@它的AI的回复
+        const contextMessage = `${fromAiModel.displayName} 说: "${content}"\n\n请回应这个话题。`;
+        
+        await this.processSingleAI(
+          roomId,
+          member.aiModel,
+          contextMessage,
+          'ai-system', // 系统用户ID表示这是AI之间的对话
+          [], // 不传递mentions，避免无限循环
+          member.aiPrompt ?? undefined,
+          'normal',
+        );
+      }
+    });
+
+    await Promise.all(promises);
+  }
+
+  /**
+   * 从内容中提取@提及
+   */
+  private extractMentionsFromContent(content: string): string[] {
+    const mentions: string[] = [];
+    const regex = /@([\u4e00-\u9fa5a-zA-Z0-9_-]+)/g;
+    let match;
+    
+    while ((match = regex.exec(content)) !== null) {
+      mentions.push(match[1]);
+    }
+    
+    return [...new Set(mentions)]; // 去重
   }
 
   /**
