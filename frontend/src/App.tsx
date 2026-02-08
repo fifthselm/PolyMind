@@ -11,6 +11,10 @@ import DashboardPage from './pages/DashboardPage';
 import ChatRoomPage from './pages/ChatRoomPage';
 import ModelsPage from './pages/ModelsPage';
 import SettingsPage from './pages/SettingsPage';
+import DebatePage from './pages/DebatePage';
+import RoleScenariosPage from './pages/RoleScenariosPage';
+import MindMapPage from './pages/MindMapPage';
+import MeetingPage from './pages/MeetingPage';
 
 // 布局组件
 import MainLayout from './components/common/MainLayout';
@@ -49,6 +53,10 @@ const App: React.FC = () => {
         <Route path="rooms/:roomId" element={<ChatRoomPage />} />
         <Route path="models" element={<ModelsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="debate/:roomId" element={<DebatePage />} />
+        <Route path="role-scenarios" element={<RoleScenariosPage />} />
+        <Route path="mind-maps" element={<MindMapPage />} />
+        <Route path="meetings" element={<MeetingPage />} />
       </Route>
       
       {/* 404 */}

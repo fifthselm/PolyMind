@@ -14,6 +14,11 @@ import { WebSearchModule } from './modules/web-search/web-search.module';
 import { FilesModule } from './modules/files/files.module';
 import { RAGModule } from './modules/rag/rag.module';
 import { AgentTeamModule } from './modules/agent-team/agent-team.module';
+import { DebatesModule } from './modules/debates/debates.module';
+import { MindMapsModule } from './modules/mind-maps/mind-maps.module';
+import { RoleScenariosModule } from './modules/role-scenarios/role-scenarios.module';
+import { MeetingsModule } from './modules/meetings/meetings.module';
+import { KnowledgeVersionsModule } from './modules/knowledge-versions/knowledge-versions.module';
 
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PublicGuard } from './guards/public.guard';
@@ -55,6 +60,11 @@ import { PublicGuard } from './guards/public.guard';
     FilesModule,
     RAGModule,
     AgentTeamModule,
+    DebatesModule,
+    MindMapsModule,
+    RoleScenariosModule,
+    MeetingsModule,
+    KnowledgeVersionsModule,
   ],
   providers: [
     // 速率限制守卫

@@ -194,3 +194,47 @@ class ApiService {
 }
 
 export const api = new ApiService();
+
+// 角色扮演场景
+export const getRoleScenarios = async () => {
+  const response = await axios.get(`${API_BASE_URL}/role-scenarios/preset`);
+  return response.data;
+};
+
+export const getScenarioPrompt = async (id: string) => {
+  const response = await axios.get(`${API_BASE_URL}/role-scenarios/${id}/prompt`);
+  return response.data;
+};
+
+// 思维导图
+export const generateMindMap = async (data: { title: string; messages: any[]; layout?: string }) => {
+  const response = await axios.post(`${API_BASE_URL}/mind-maps/generate`, data);
+  return response.data;
+};
+
+// 会议
+export const getMeetings = async () => {
+  const response = await axios.get(`${API_BASE_URL}/meetings`);
+  return response.data;
+};
+
+export const createMeeting = async (data: { title: string; description?: string }) => {
+  const response = await axios.post(`${API_BASE_URL}/meetings`, data);
+  return response.data;
+};
+
+export const generateMeetingSummary = async (meetingId: string, type?: string) => {
+  const response = await axios.post(`${API_BASE_URL}/meetings/${meetingId}/summary`, { type });
+  return response.data;
+};
+
+// 知识库版本
+export const getKbVersions = async (documentId: string) => {
+  const response = await axios.get(`${API_BASE_URL}/kb-versions/history/${documentId}`);
+  return response.data;
+};
+
+export const rollbackKbVersion = async (versionId: string) => {
+  const response = await axios.post(`${API_BASE_URL}/kb-versions/${versionId}/rollback`);
+  return response.data;
+};

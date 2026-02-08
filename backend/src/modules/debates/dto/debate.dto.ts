@@ -1,0 +1,49 @@
+import { IsString, IsUUID, IsOptional, IsNumber, IsEnum, Min, Max } from 'class-validator';
+
+export class CreateDebateDto {
+  @IsString()
+  topic: string; // 辩论主题
+
+  @IsUUID()
+  aiModelIdA: string; // 正方AI
+
+  @IsUUID()
+  aiModelIdB: string; // 反方AI
+
+  @IsString()
+  @IsOptional()
+  description?: string;
+
+  @IsEnum(['free', 'structured'])
+  format: 'free' | 'structured' = 'structured';
+
+  @IsNumber()
+  @Min(1)
+  @Max(10)
+  @IsOptional()
+  maxRounds?: number = 3;
+}
+
+export class ScoreDebateDto {
+  @IsUUID()
+  debateId: string;
+
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  scoreA: number; // 正方分数
+
+  @IsNumber()
+  @Min(0)
+  @Max(10)
+  scoreB: number; // 反方分数
+
+  @IsString()
+  @IsOptional()
+  comment?: string;
+}
+
+export class NextRoundDto {
+  @IsUUID()
+  debateId: string;
+}

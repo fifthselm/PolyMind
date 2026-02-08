@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ============================================
@@ -33,6 +32,7 @@ model User {
   passwordResets   PasswordResetToken[] @relation("UserPasswordResets")
   uploadedFiles    File[]
   agentRoles       AgentRole[]
+  kbVersions       KBVersion[]
   agentTeams       AgentTeam[]
 
   @@map("users")
@@ -346,4 +346,172 @@ model AgentTeamAgent {
 
   @@unique([teamId, roleId])
   @@map("agent_team_agents")
+}
+
+// ============================================
+// 知识库版本表
+// ============================================
+model KBVersion {
+  id            String    @id @default(uuid())
+  documentId    String
+  versionNumber Int
+  title         String
+  description   String?
+  changeSummary String?
+  status        VersionStatus @default(draft)
+  tags          String[]  @default([])
+  isAutoSave    Boolean   @default(false)
+  createdById   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // 关联关系
+  createdBy  User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  contents   KBVersionContent[]
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId])
+  @@index([createdAt])
+  @@map("kb_versions")
+}
+
+// 知识库版本状态枚举
+enum VersionStatus {
+  draft
+  published
+  archived
+}
+
+// ============================================
+// 知识库版本内容表
+// ============================================
+model KBVersionContent {
+  id          String    @id @default(uuid())
+  versionId   String
+  blockType   String
+  content     Json
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  // 关联关系
+  version   KBVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+
+  @@index([versionId])
+  @@index([versionId, order])
+  @@map("kb_version_contents")
+}
+
+// ============================================
+// 角色扮演场景表
+// ============================================
+model RoleScenario {
+  id            String    @id @default(uuid())
+  name          String
+  role          String
+  description   String
+  systemPrompt  String    @db.Text
+  difficulty    String    @default("intermediate")
+  category      String    @default("custom")
+  userId        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([category])
+  @@index([difficulty])
+  @@map("role_scenarios")
+}
+
+// ============================================
+// 会议表
+// ============================================
+model Meeting {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  roomId      String?
+  status      String    @default("scheduled")
+  startedAt   DateTime?
+  endedAt     DateTime?
+  createdAt   DateTime  @default(now())
+
+  transcripts   MeetingTranscript[]
+  summaries     MeetingSummary[]
+  actionItems   MeetingActionItem[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("meetings")
+}
+
+// ============================================
+// 会议转写表
+// ============================================
+model MeetingTranscript {
+  id          String    @id @default(uuid())
+  meetingId   String
+  timestamp   Float
+  speaker     String
+  content     String    @db.Text
+  confidence  Float     @default(1.0)
+  isEdited    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@index([timestamp])
+  @@map("meeting_transcripts")
+}
+
+// ============================================
+// 会议摘要表
+// ============================================
+model MeetingSummary {
+  id          String    @id @default(uuid())
+  meetingId   String
+  type        String    // 'executive', 'detailed', 'action_items'
+  content     String    @db.Text
+  generatedAt DateTime  @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@index([type])
+  @@map("meeting_summaries")
+}
+
+// ============================================
+// 会议行动项表
+// ============================================
+model MeetingActionItem {
+  id          String    @id @default(uuid())
+  meetingId   String
+  description String    @db.Text
+  assignee    String?
+  dueDate     DateTime?
+  priority    String    @default("medium")
+  status      String    @default("pending")
+  createdAt   DateTime  @default(now())
+
+  meeting Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+
+  @@index([meetingId])
+  @@index([priority])
+  @@index([status])
+  @@map("meeting_action_items")
+}
+
+// ============================================
+// 思维导图表
+// ============================================
+model MindMap {
+  id          String    @id @default(uuid())
+  title       String
+  layout      String    @default("mindmap")
+  mermaidCode String    @db.Text
+  depth       Int       @default(3)
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@map("mind_maps")
 }
