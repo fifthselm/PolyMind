@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject, forwardRef } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { AIChatService } from '../ai-chat/ai-chat.service';
@@ -17,6 +17,7 @@ export class GatewayService {
 
   constructor(
     private readonly jwtService: JwtService,
+    @Inject(forwardRef(() => AIChatService))
     private readonly aiChatService: AIChatService,
   ) {}
 

@@ -397,7 +397,7 @@ export class AIChatService {
           messages,
           temperature: aiModel.temperature,
           maxTokens: aiModel.maxTokens,
-          signal: abortController.signal, // 传递中断信号
+          // signal: abortController.signal,  // TODO: 移除signal参数 // 传递中断信号
         },
         callbacks,
         {

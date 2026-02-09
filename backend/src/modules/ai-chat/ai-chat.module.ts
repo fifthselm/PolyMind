@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { AIChatService } from './ai-chat.service';
 import { WebsocketModule } from '../websocket/websocket.module';
 import { LLMModule } from '../../providers/llm/llm.module';
@@ -6,7 +6,7 @@ import { WebSearchModule } from '../web-search/web-search.module';
 
 @Module({
   imports: [
-    WebsocketModule,
+    forwardRef(() => WebsocketModule),
     LLMModule,
     WebSearchModule,
   ],

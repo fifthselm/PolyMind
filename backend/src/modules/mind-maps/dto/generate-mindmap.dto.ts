@@ -14,3 +14,5 @@ export class GenerateMindMapDto {
   @IsOptional()
   depth?: number;
 }
+
+export type MindMapLayout = 'mindmap' | 'flowchart' | 'timeline' | 'tree';

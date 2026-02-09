@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../providers/prisma.service';
-import { LLMService } from '../../providers/llm/llm.service';
+import { PrismaService } from '../../../providers/prisma.service';
+import { LLMService } from '../../../providers/llm/llm.service';
 
 @Injectable()
 export class SummaryService {

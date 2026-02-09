@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { RAGService } from './rag.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { Request } from 'express';
 
 interface RequestWithUser extends Request {

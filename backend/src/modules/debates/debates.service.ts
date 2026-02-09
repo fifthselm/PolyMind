@@ -55,7 +55,7 @@ export class DebatesService {
           currentPosition: 'A',
           status: 'preparing',
           scores: { A: 0, B: 0 },
-        },
+        } as any,
       },
     });
 
@@ -120,7 +120,7 @@ export class DebatesService {
       temperature: 0.7,
     });
 
-    return result.content;
+    return result.text;
   }
 
   // 下一轮发言
@@ -239,7 +239,7 @@ export class DebatesService {
       [],
       { systemPrompt: prompt, temperature: 0.5 }
     );
-    return result.content;
+    return result.text;
   }
 
   // 获取辩论状态

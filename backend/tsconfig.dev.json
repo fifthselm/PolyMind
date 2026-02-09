@@ -12,12 +12,11 @@
     "baseUrl": "./",
     "incremental": true,
     "skipLibCheck": true,
-    "noImplicitAny": false,
-    "strictNullChecks": false,
-    "strictBindCallApply": false,
-    "forceConsistentCasingInFileNames": false,
-    "noFallthroughCasesInSwitch": false,
-    "esModuleInterop": true,
+    "strictNullChecks": true,
+    "noImplicitAny": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
     "paths": {
       "@/*": ["src/*"],
       "@shared/*": ["../shared/*"]

@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { FilesService } from './files.service';
-import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 import { Request } from 'express';
 
 interface RequestWithUser extends Request {
@@ -36,7 +36,7 @@ export class FilesController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile() file: Express.any,
     @Body('roomId') roomId: string,
     @Req() req: RequestWithUser,
   ) {

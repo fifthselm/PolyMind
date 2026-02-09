@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Param, UseGuards, Req } from '@nestjs/common';
 import { DebatesService } from './debates.service';
 import { CreateDebateDto, ScoreDebateDto } from './dto/debate.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../../guards/jwt-auth.guard';
 
 @Controller('api/v1/debates')
 export class DebatesController {
