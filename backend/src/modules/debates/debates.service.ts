@@ -3,7 +3,7 @@ import { PrismaService } from '../../providers/prisma.service';
 import { LLMService } from '../../providers/llm/llm.service';
 import { debatePrompts } from './prompts/debate.prompts';
 
-interface DebateState {
+export interface DebateState {
   id: string;
   topic: string;
   positionA_aiModelId: string;
@@ -68,7 +68,8 @@ export class DebatesService {
       where: { id: roomId },
     });
 
-    if (!room || room.metadata?.type !== 'debate') {
+    const metadata = room?.metadata as any;
+    if (!room || metadata?.type !== 'debate') {
       throw new Error('辩论房间不存在');
     }
 
@@ -76,10 +77,10 @@ export class DebatesService {
     const state: DebateState = {
       id: roomId,
       topic: room.name.replace('辩论: ', ''),
-      positionA_aiModelId: room.metadata.positionA_aiModelId,
-      positionB_aiModelId: room.metadata.positionB_aiModelId,
+      positionA_aiModelId: metadata.positionA_aiModelId,
+      positionB_aiModelId: metadata.positionB_aiModelId,
       currentRound: 1,
-      maxRounds: room.metadata.maxRounds,
+      maxRounds: metadata.maxRounds,
       currentPosition: 'A',
       history: [],
       status: 'active',
@@ -91,7 +92,7 @@ export class DebatesService {
     // 更新房间状态
     await this.prisma.chatRoom.update({
       where: { id: roomId },
-      data: { metadata: { ...room.metadata, status: 'active' } },
+      data: { metadata: { ...metadata, status: 'active' } },
     });
 
     // 生成开场白
@@ -115,12 +116,15 @@ export class DebatesService {
       ? state.positionA_aiModelId
       : state.positionB_aiModelId;
 
-    const result = await this.llmService.sendMessage(aiModelId, [], {
+    const result = await this.llmService.sendMessage(aiModelId, {
+      model: aiModelId,
+      messages: [{ role: "user", content: "" }],
       systemPrompt: prompt,
       temperature: 0.7,
     });
 
-    return result.text;
+    const content = result.choices[0].message.content;
+    return typeof content === "string" ? content : "";
   }
 
   // 下一轮发言
@@ -155,12 +159,14 @@ export class DebatesService {
       ? state.positionA_aiModelId
       : state.positionB_aiModelId;
 
-    const content = await this.llmService.sendMessage(aiModelId, [], {
+    const result = await this.llmService.sendMessage(aiModelId, {
+      model: aiModelId,
+      messages: [{ role: "user", content: "" }],
       systemPrompt: prompt,
       temperature: 0.7,
     });
 
-    // 记录历史
+    const content = result.choices[0].message.content;
     state.history.push({
       round: state.currentRound,
       position: state.currentPosition,
@@ -231,15 +237,15 @@ export class DebatesService {
     };
   }
 
-  // 生成总结
   private async generateSummary(topic: string, history: string) {
     const prompt = debatePrompts.summary(topic, history);
     const result = await this.llmService.sendMessage(
       'default', // 使用默认模型
-      [],
-      { systemPrompt: prompt, temperature: 0.5 }
+      { model: 'gpt-3.5-turbo', messages: [], systemPrompt: prompt },
+      { timeout: 60000 }
     );
-    return result.text;
+    const content = result.choices[0].message.content;
+    return typeof content === "string" ? content : "";
   }
 
   // 获取辩论状态

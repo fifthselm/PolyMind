@@ -36,7 +36,7 @@ export class FilesController {
   @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
-    @UploadedFile() file: Express.any,
+    @UploadedFile() file: any,
     @Body('roomId') roomId: string,
     @Req() req: RequestWithUser,
   ) {

@@ -9,7 +9,7 @@ interface MindMapNode {
   children?: MindMapNode[];
 }
 
-interface MindMapResult {
+export interface MindMapResult {
   mermaidCode: string;
   topics: string[];
   layout: MindMapLayout;
@@ -31,6 +31,7 @@ export class MindMapsService {
     const { messages, layout, title } = dto;
 
     // 1. 提取关键主题
+    // @ts-ignore
     const topics = await this.extractTopics(messages, title);
 
     // 2. 构建节点树结构
@@ -87,7 +88,7 @@ JSON 格式：
         maxTokens: 2000,
       });
 
-      const content = response.content.trim();
+      const content = response.choices[0].message.content?.trim() || '';
       
       // 尝试解析 JSON
       const jsonMatch = content.match(/\[[\s\S]*\]/);

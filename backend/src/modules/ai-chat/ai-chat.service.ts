@@ -47,7 +47,7 @@ interface ContextMessage {
 }
 
 // 流式生成会话管理
-interface StreamingSession {
+export interface StreamingSession {
   abortController: AbortController;
   messageId: string;
   aiModelId: string;

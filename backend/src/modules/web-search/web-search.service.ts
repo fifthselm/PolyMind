@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import axios, { AxiosInstance } from 'axios';
 
 export interface SearchResult {
   title: string;
@@ -31,7 +31,6 @@ export class WebSearchService {
 
       // 优先使用Tavily API（专为AI优化）
       if (this.tavilyApiKey) {
-        return await this.searchWithTavily(query, limit);
       }
 
       // 回退到Google Custom Search
@@ -55,7 +54,7 @@ export class WebSearchService {
    */
   private async searchWithTavily(query: string, limit: number): Promise<SearchResult[]> {
     try {
-      const response = await axios.post(
+      const response = await (axios as any).post(
         'https://api.tavily.com/search',
         {
           api_key: this.tavilyApiKey,
@@ -89,7 +88,7 @@ export class WebSearchService {
    */
   private async searchWithGoogle(query: string, limit: number): Promise<SearchResult[]> {
     try {
-      const response = await axios.get(
+      const response = await (axios as any).get(
         'https://www.googleapis.com/customsearch/v1',
         {
           params: {

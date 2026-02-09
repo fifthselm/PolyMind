@@ -1,6 +1,9 @@
 import { IsString, IsUUID, IsOptional, IsNumber, IsEnum, Min, Max } from 'class-validator';
 
 export class CreateDebateDto {
+  @IsUUID()
+  userId: string; // 添加 userId 字段
+
   @IsString()
   topic: string; // 辩论主题
 
@@ -20,8 +23,7 @@ export class CreateDebateDto {
   @IsNumber()
   @Min(1)
   @Max(10)
-  @IsOptional()
-  maxRounds?: number = 3;
+  maxRounds: number = 3;
 }
 
 export class ScoreDebateDto {
@@ -29,11 +31,13 @@ export class ScoreDebateDto {
   debateId: string;
 
   @IsNumber()
+  @IsOptional()
   @Min(0)
   @Max(10)
   scoreA: number; // 正方分数
 
   @IsNumber()
+  @IsOptional()
   @Min(0)
   @Max(10)
   scoreB: number; // 反方分数

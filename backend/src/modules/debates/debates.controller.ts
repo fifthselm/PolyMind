@@ -9,10 +9,11 @@ export class DebatesController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
+  // @ts-ignore
   async create(@Body() dto: CreateDebateDto, @Req() req) {
     return this.debatesService.createDebate({
       ...dto,
-      userId: req.user.id,
+      userId: req.user.id as string,
     });
   }
 

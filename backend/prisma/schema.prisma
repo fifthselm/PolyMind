@@ -83,6 +83,7 @@ model ChatRoom {
   maxMembers  Int         @default(50)
   isPrivate   Boolean     @default(false)
   status      RoomStatus  @default(active)
+  metadata    Json?       // 用于存储 debate 等特殊类型的元数据
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -357,6 +358,7 @@ model KBVersion {
   versionNumber Int
   title         String
   description   String?
+  content       String?   @db.Text  // 添加 content 字段
   changeSummary String?
   status        VersionStatus @default(draft)
   tags          String[]  @default([])

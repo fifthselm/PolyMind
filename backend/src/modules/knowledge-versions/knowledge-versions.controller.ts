@@ -28,6 +28,6 @@ export class KnowledgeVersionsController {
 
   @Post('compare')
   async compare(@Body() dto: CompareVersionsDto) {
-    return this.kvService.compareVersions(dto.versionIdA, dto.versionIdB);
+    return this.kvService.compareVersions(dto.versionId1, dto.versionId2);
   }
 }

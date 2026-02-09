@@ -37,7 +37,7 @@ export class FilesService {
    * 上传文件
    */
   async uploadFile(
-    file: Express.Multer.File,
+    file: any,
     uploaderId: string,
     roomId?: string,
   ) {

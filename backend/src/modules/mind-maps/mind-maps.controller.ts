@@ -29,7 +29,7 @@ export class MindMapsController {
     }
 
     const dto: GenerateMindMapDto = {
-      messages,
+      messages: messages.map((content: string) => ({ role: 'user', content })),
       title,
       layout,
     };

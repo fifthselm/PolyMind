@@ -89,6 +89,7 @@ export interface LLMRequestOptions {
   tools?: ToolDefinition[];
   toolChoice?: 'auto' | 'none' | 'required' | { type: string; function: { name: string } };
   systemPrompt?: string;
+  signal?: AbortSignal;
 }
 
 // 响应

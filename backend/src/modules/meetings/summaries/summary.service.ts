@@ -37,7 +37,9 @@ export class SummaryService {
         prompt = `生成会议执行摘要（200字以内），包括：\n1. 会议主题和目的\n2. 主要讨论内容\n3. 关键决策\n4. 下一步行动\n\n${transcript}`;
     }
 
-    const result = await this.llmService.sendMessage('default', [], {
+    const result = await this.llmService.sendMessage('default', {
+      model: 'gpt-3.5-turbo',
+      messages: [],
       systemPrompt: prompt,
       temperature: 0.5,
       maxTokens: 2000,
@@ -47,7 +49,7 @@ export class SummaryService {
       data: {
         meetingId,
         type,
-        content: result.content,
+        content: result.choices[0].message.content,
       },
     });
 
@@ -79,7 +81,9 @@ export class SummaryService {
   }
 ]\n\n会议内容：\n${transcript}`;
 
-    const result = await this.llmService.sendMessage('default', [], {
+    const result = await this.llmService.sendMessage('default', {
+      model: 'gpt-3.5-turbo',
+      messages: [],
       systemPrompt: prompt,
       temperature: 0.3,
       maxTokens: 1500,
@@ -87,10 +91,10 @@ export class SummaryService {
 
     let actionItems: any[] = [];
     try {
-      actionItems = JSON.parse(result.content);
+      actionItems = JSON.parse(result.choices[0].message.content);
     } catch (e) {
       // 如果JSON解析失败，返回原始内容
-      actionItems = [{ description: result.content, priority: 'medium' }];
+      actionItems = [{ description: result.choices[0].message.content, priority: 'medium' }];
     }
 
     const created = await Promise.all(
