@@ -2,9 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, List, Button, Modal, Form, Input, message, Empty, Spin } from 'antd';
 import { PlusOutlined, MessageOutlined, TeamOutlined } from '@ant-design/icons';
-import { useRoomStore } from '@/stores/roomStore';
-import { api } from '@/services/api';
-import { handleApiError } from '@/utils/errorHandler';
+import { useRoomStore } from '../stores/roomStore';
+import { api } from '../services/api';
+import { handleApiError } from '../utils/errorHandler';
 
 const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);

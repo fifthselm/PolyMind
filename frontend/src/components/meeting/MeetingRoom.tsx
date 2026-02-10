@@ -8,33 +8,24 @@ import {
   Modal,
   Form,
   DatePicker,
-  Select,
   Space,
   Typography,
   Spin,
   Empty,
-  Tooltip,
-  Divider,
-  Progress,
 } from 'antd';
 import {
   PlusOutlined,
   VideoCameraOutlined,
   FileTextOutlined,
-  DownloadOutlined,
   TeamOutlined,
   ClockCircleOutlined,
-  CheckCircleOutlined,
-  PlayCircleOutlined,
-  CloseCircleOutlined,
 } from '@ant-design/icons';
-import { api } from '../../services/api';
+import { getMeetings, createMeeting, getMeeting, addTranscript, generateSummary, exportMeetingMarkdown, exportMeetingPdf } from '../../services/api';
 import MeetingSummary from '../summary/MeetingSummary';
 import dayjs from 'dayjs';
 
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
-const { Option } = Select;
 
 interface Meeting {
   id: string;
@@ -68,8 +59,8 @@ const MeetingRoom: React.FC = () => {
   const fetchMeetings = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.getMeetings();
-      setMeetings(response.data);
+      const data = await getMeetings();
+      setMeetings(data);
     } catch (error) {
       console.error('获取会议列表失败:', error);
     } finally {
@@ -84,12 +75,9 @@ const MeetingRoom: React.FC = () => {
   // 创建会议
   const handleCreateMeeting = async (values: any) => {
     try {
-      await api.createMeeting({
+      await createMeeting({
         title: values.title,
         description: values.description,
-        startTime: values.startTime?.toISOString(),
-        endTime: values.endTime?.toISOString(),
-        participants: values.participants || [],
       });
       setShowCreateModal(false);
       fetchMeetings();
@@ -103,7 +91,7 @@ const MeetingRoom: React.FC = () => {
     setSelectedMeeting(meeting);
     setLoading(true);
     try {
-      const detail = await api.getMeeting(meeting.id);
+      const detail = await getMeeting(meeting.id);
       setTranscripts(detail.transcript || []);
     } catch (error) {
       console.error('获取会议详情失败:', error);
@@ -117,11 +105,11 @@ const MeetingRoom: React.FC = () => {
     if (!selectedMeeting || !transcriptInput.trim()) return;
 
     try {
-      await api.addTranscript(selectedMeeting.id, transcriptInput.trim());
+      await addTranscript(selectedMeeting.id, transcriptInput.trim());
       setTranscriptInput('');
       setShowTranscriptModal(false);
       // 刷新转录列表
-      const detail = await api.getMeeting(selectedMeeting.id);
+      const detail = await getMeeting(selectedMeeting.id);
       setTranscripts(detail.transcript || []);
     } catch (error) {
       console.error('添加转录失败:', error);
@@ -133,9 +121,9 @@ const MeetingRoom: React.FC = () => {
     if (!selectedMeeting) return;
     setGeneratingSummary(true);
     try {
-      await api.generateSummary(selectedMeeting.id);
+      await generateSummary(selectedMeeting.id);
       // 刷新会议详情
-      const detail = await api.getMeeting(selectedMeeting.id);
+      const detail = await getMeeting(selectedMeeting.id);
       setSelectedMeeting(detail);
     } catch (error) {
       console.error('生成摘要失败:', error);
@@ -148,7 +136,7 @@ const MeetingRoom: React.FC = () => {
   const handleExportMarkdown = async () => {
     if (!selectedMeeting) return;
     try {
-      const markdown = await api.exportMeetingMarkdown(selectedMeeting.id);
+      const markdown = await exportMeetingMarkdown(selectedMeeting.id);
       // 下载文件
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
@@ -166,7 +154,7 @@ const MeetingRoom: React.FC = () => {
   const handleExportPdf = async () => {
     if (!selectedMeeting) return;
     try {
-      const pdfBuffer = await api.exportMeetingPdf(selectedMeeting.id);
+      const pdfBuffer = await exportMeetingPdf(selectedMeeting.id);
       // 下载文件
       const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
@@ -348,11 +336,9 @@ const MeetingRoom: React.FC = () => {
                           {dayjs(transcript.timestamp).format('HH:mm:ss')}
                         </Text>
                       </Space>
-                      <Paragraph
-                        style={{ marginTop: 8, marginBottom: 0, whiteSpace: 'pre-wrap' }}
-                      >
+                      <div style={{ marginTop: 8, whiteSpace: 'pre-wrap' }}>
                         {transcript.content}
-                      </Paragraph>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -391,20 +377,6 @@ const MeetingRoom: React.FC = () => {
 
           <Form.Item name="description" label="会议描述">
             <TextArea rows={3} placeholder="请输入会议描述（可选）" />
-          </Form.Item>
-
-          <Form.Item name="startTime" label="开始时间">
-            <DatePicker showTime style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="endTime" label="结束时间">
-            <DatePicker showTime style={{ width: '100%' }} />
-          </Form.Item>
-
-          <Form.Item name="participants" label="参与人员">
-            <Select mode="tags" placeholder="输入参与人员（可选）">
-              {/* 这里可以添加用户选择器 */}
-            </Select>
           </Form.Item>
 
           <Form.Item>

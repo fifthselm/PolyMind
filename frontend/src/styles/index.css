@@ -1,3 +1,5 @@
+/* PolyMind Frontend Global Styles */
+
 * {
   margin: 0;
   padding: 0;
@@ -6,22 +8,61 @@
 
 html, body, #root {
   height: 100%;
+  width: 100%;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-    'Noto Color Emoji';
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f5f5f5;
+  background-color: #f0f2f5;
 }
 
-/* 聊天相关样式 */
+/* Layout Styles */
+.main-layout {
+  display: flex;
+  height: 100vh;
+}
+
+.main-sidebar {
+  width: 240px;
+  background: #001529;
+  flex-shrink: 0;
+}
+
+.main-content {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  background: #f0f2f5;
+}
+
+/* Page Styles */
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 24px;
+}
+
+/* Card Styles */
+.feature-card {
+  transition: all 0.3s;
+  cursor: pointer;
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Chat Styles */
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: calc(100vh - 120px);
 }
 
 .chat-messages {
@@ -30,83 +71,91 @@ body {
   padding: 16px;
 }
 
-.chat-message {
-  margin-bottom: 16px;
-}
-
-.chat-message-avatar {
-  margin-right: 12px;
-}
-
-.chat-message-content {
-  background: #fff;
-  padding: 12px 16px;
-  border-radius: 8px;
-  max-width: 70%;
-  word-break: break-word;
-}
-
-.chat-message-owner .chat-message-content {
-  background: #1890ff;
-  color: #fff;
-}
-
-/* 输入区域 */
 .chat-input-area {
   padding: 16px;
   background: #fff;
   border-top: 1px solid #f0f0f0;
 }
 
-.chat-input-area .ant-input {
-  border-radius: 20px;
+/* Debate Styles */
+.debate-room {
+  padding: 16px;
 }
 
-/* 房间列表 */
-.room-list-item {
-  cursor: pointer;
+.debate-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.debate-stage {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.position-card {
+  flex: 1;
+  max-width: 50%;
+}
+
+.position-card.A {
+  border-left: 4px solid #1890ff;
+}
+
+.position-card.B {
+  border-left: 4px solid #ff4d4f;
+}
+
+.debate-controls {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+/* MindMap Styles */
+.mindmap-page {
+  padding: 16px;
+}
+
+.mindmap-viewer {
+  margin-top: 16px;
+  padding: 16px;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.mermaid-render {
+  overflow: auto;
+}
+
+/* Meeting Styles */
+.meeting-page {
+  padding: 16px;
+}
+
+/* Role Scenario Styles */
+.role-scenario-card {
   transition: all 0.3s;
 }
 
-.room-list-item:hover {
-  background: #f5f5f5;
+.role-scenario-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
-/* 成员列表 */
-.member-list {
-  border-left: 1px solid #f0f0f0;
-  height: 100%;
-}
-
-/* AI模型标识 */
-.ai-badge {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 12px;
-}
-
-/* 加载状态 */
-.loading-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-/* 动画 */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+/* Responsive */
+@media (max-width: 768px) {
+  .main-sidebar {
+    width: 80px;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
 
-.fade-in {
-  animation: fadeIn 0.3s ease-out;
+  .debate-stage {
+    flex-direction: column;
+  }
+
+  .position-card {
+    max-width: 100%;
+  }
 }

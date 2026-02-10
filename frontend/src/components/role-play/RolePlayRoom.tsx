@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Card, Button, message } from 'antd';
-import { createMessage } from '../../services/api';
+import { api } from '../../services/api';
 
 export const RolePlayRoom: React.FC<{
   scenario: {
@@ -24,7 +24,7 @@ export const RolePlayRoom: React.FC<{
     setLoading(true);
 
     try {
-      const response = await createMessage(scenario.id, input);
+      const response = await api.sendMessage(scenario.id, { content: input });
       setMessages((prev) => [...prev, { role: 'assistant', content: response.content }]);
     } catch (error) {
       message.error('发送失败');
@@ -50,7 +50,7 @@ export const RolePlayRoom: React.FC<{
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={`与${scenario.name}对话...`}
-            onPressEnter={(e) => !e.shiftKey && (e.preventDefault(), handleSend())}
+            onKeyDown={(e: React.KeyboardEvent) => !e.shiftKey && e.key === 'Enter' && (e.preventDefault(), handleSend())}
           />
           <Button type="primary" onClick={handleSend} loading={loading}>
             发送

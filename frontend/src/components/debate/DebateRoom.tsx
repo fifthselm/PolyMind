@@ -1,12 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { message, Card, Button, Select, Input, Slider, Modal, List, Tag } from 'antd';
+import { message, Card, Button, Slider, Modal, Tag } from 'antd';
 import { PlayCircleOutlined, TrophyOutlined, MessageOutlined } from '@ant-design/icons';
 import { useSocket } from '../../hooks/useSocket';
-import { useAuth } from '../../hooks/useAuth';
-
-const { TextArea } = Input;
-const { Option } = Select;
 
 interface DebateRoom {
   id: string;
@@ -28,8 +24,7 @@ interface Message {
 
 export const DebateRoom: React.FC<{ roomId: string }> = ({ roomId }) => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const socket = useSocket('/debates');
+  const { socket } = useSocket('/debates');
   const [debate, setDebate] = useState<DebateRoom | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);

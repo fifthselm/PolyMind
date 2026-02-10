@@ -99,6 +99,7 @@ export const useRoomStore = create<RoomState>((set) => ({
   messages: [],
   members: [],
   isLoading: false,
+  streamingStates: new Map(),
   
   setRooms: (rooms) => set({ rooms }),
   
@@ -177,11 +178,11 @@ export const useRoomStore = create<RoomState>((set) => ({
     return { streamingStates: newStreamingStates };
   }),
   
-  getStreamingState: (messageId) => {
+  getStreamingState: (messageId): StreamingState | undefined => {
     return useRoomStore.getState().streamingStates.get(messageId);
   },
   
-  getActiveStreamingMessages: () => {
+  getActiveStreamingMessages: (): string[] => {
     const states = useRoomStore.getState().streamingStates;
     return Array.from(states.entries())
       .filter(([, state]) => state.isStreaming)

@@ -191,6 +191,27 @@ class ApiService {
     const response = await this.client.delete(`/rooms/${roomId}/members/${memberId}`);
     return response.data;
   }
+
+  // 会议相关
+  async getMeeting(meetingId: string) {
+    const response = await this.client.get(`/meetings/${meetingId}`);
+    return response.data;
+  }
+
+  async addTranscript(meetingId: string, content: string, speaker?: string) {
+    const response = await this.client.post(`/meetings/${meetingId}/transcript`, { content, speaker });
+    return response.data;
+  }
+
+  async generateSummary(meetingId: string, type: string = 'detailed') {
+    const response = await this.client.post(`/meetings/${meetingId}/summary`, { type });
+    return response.data;
+  }
+
+  async extractActionItems(meetingId: string) {
+    const response = await this.client.post(`/meetings/${meetingId}/action-items`);
+    return response.data;
+  }
 }
 
 export const api = new ApiService();
@@ -225,6 +246,38 @@ export const createMeeting = async (data: { title: string; description?: string 
 
 export const generateMeetingSummary = async (meetingId: string, type?: string) => {
   const response = await axios.post(`${API_BASE_URL}/meetings/${meetingId}/summary`, { type });
+  return response.data;
+};
+
+export const getMeeting = async (meetingId: string) => {
+  const response = await axios.get(`${API_BASE_URL}/meetings/${meetingId}`);
+  return response.data;
+};
+
+export const addTranscript = async (meetingId: string, content: string, speaker?: string) => {
+  const response = await axios.post(`${API_BASE_URL}/meetings/${meetingId}/transcript`, { content, speaker });
+  return response.data;
+};
+
+export const generateSummary = async (meetingId: string, type: string = 'detailed') => {
+  const response = await axios.post(`${API_BASE_URL}/meetings/${meetingId}/summary`, { type });
+  return response.data;
+};
+
+export const extractActionItems = async (meetingId: string) => {
+  const response = await axios.post(`${API_BASE_URL}/meetings/${meetingId}/action-items`);
+  return response.data;
+};
+
+export const exportMeetingMarkdown = async (meetingId: string) => {
+  const response = await axios.get(`${API_BASE_URL}/meetings/${meetingId}/export/markdown`);
+  return response.data;
+};
+
+export const exportMeetingPdf = async (meetingId: string) => {
+  const response = await axios.get(`${API_BASE_URL}/meetings/${meetingId}/export/pdf`, {
+    responseType: 'arraybuffer'
+  });
   return response.data;
 };
 
