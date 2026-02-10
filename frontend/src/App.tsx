@@ -11,6 +11,7 @@ import DashboardPage from './pages/DashboardPage';
 import ChatRoomPage from './pages/ChatRoomPage';
 import ModelsPage from './pages/ModelsPage';
 import SettingsPage from './pages/SettingsPage';
+import DebateListPage from './pages/DebateListPage';
 import DebatePage from './pages/DebatePage';
 import RoleScenariosPage from './pages/RoleScenariosPage';
 import MindMapPage from './pages/MindMapPage';
@@ -50,9 +51,11 @@ const App: React.FC = () => {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="rooms" element={<ChatRoomPage />} />
         <Route path="rooms/:roomId" element={<ChatRoomPage />} />
         <Route path="models" element={<ModelsPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="debate" element={<DebateListPage />} />
         <Route path="debate/:roomId" element={<DebatePage />} />
         <Route path="role-scenarios" element={<RoleScenariosPage />} />
         <Route path="mind-maps" element={<MindMapPage />} />

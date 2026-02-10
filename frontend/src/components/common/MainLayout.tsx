@@ -9,6 +9,10 @@ import {
   UserOutlined,
   LogoutOutlined,
   BellOutlined,
+  TeamOutlined,
+  BulbOutlined,
+  CalendarOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '../../stores/authStore';
 import { socketService } from '../../services/socket';
@@ -22,9 +26,7 @@ const MainLayout: React.FC = () => {
   const { user, logout } = useAuthStore();
 
   useEffect(() => {
-    // 连接WebSocket
     socketService.connect();
-
     return () => {
       socketService.disconnect();
     };
@@ -35,6 +37,31 @@ const MainLayout: React.FC = () => {
       key: '/dashboard',
       icon: <DashboardOutlined />,
       label: '仪表盘',
+    },
+    {
+      key: '/rooms',
+      icon: <MessageOutlined />,
+      label: '群聊',
+    },
+    {
+      key: '/debate',
+      icon: <TrophyOutlined />,
+      label: 'AI辩论',
+    },
+    {
+      key: '/role-scenarios',
+      icon: <TeamOutlined />,
+      label: '角色扮演',
+    },
+    {
+      key: '/mind-maps',
+      icon: <BulbOutlined />,
+      label: '思维导图',
+    },
+    {
+      key: '/meetings',
+      icon: <CalendarOutlined />,
+      label: '会议纪要',
     },
     {
       key: '/models',

@@ -78,7 +78,12 @@ class SocketService {
   /**
    * 发送消息
    */
-  sendMessage(roomId: string, content: string, options?: { replyToId?: string; mentions?: string[] }): void {
+  sendMessage(roomId: string, content: string, options?: { 
+    replyToId?: string; 
+    mentions?: string[];
+    enableWebSearch?: boolean;
+    enableDeepThink?: boolean;
+  }): void {
     this.socket?.emit('message:send', {
       roomId,
       content,
